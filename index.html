@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מה יש לצפות?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800&family=Heebo:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1115;
+    --surface:#181B22;
+    --card:#20242C;
+    --card-hover:#262B35;
+    --gold:#D4A244;
+    --gold-dim:#8C6F35;
+    --teal:#4FB6A8;
+    --text:#EDEEF2;
+    --muted:#8B90A0;
+    --border:#2B303B;
+    --danger:#C1554A;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  html,body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Heebo',sans-serif;
+    min-height:100vh;
+  }
+  h1,h2,h3,.brand{font-family:'Rubik',sans-serif;}
+  ::selection{background:var(--gold);color:#0F1115;}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 20px 80px;}
+
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:8px 0 28px;
+  }
+  .brand{font-size:22px;font-weight:800;letter-spacing:-0.02em;display:flex;align-items:center;gap:10px;}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold);}
+  .icon-btn{
+    background:var(--surface);border:1px solid var(--border);color:var(--muted);
+    width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:16px;transition:.15s;
+  }
+  .icon-btn:hover{color:var(--text);border-color:var(--gold-dim);}
+
+  section{margin-bottom:34px;}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;}
+  .section-head h2{font-size:16px;font-weight:700;margin:0;color:var(--text);}
+  .section-head .hint{font-size:13px;color:var(--muted);}
+
+  /* provider chips */
+  #providerGrid{display:flex;flex-wrap:wrap;gap:10px;}
+  .chip{
+    display:flex;align-items:center;gap:8px;
+    background:var(--surface);border:1px solid var(--border);
+    padding:7px 12px 7px 14px;border-radius:999px;cursor:pointer;
+    font-size:13.5px;color:var(--muted);transition:.15s;user-select:none;
+  }
+  .chip img{width:20px;height:20px;border-radius:5px;object-fit:cover;filter:grayscale(1);opacity:.7;transition:.15s;}
+  .chip.active{border-color:var(--gold);color:var(--text);background:rgba(212,162,68,0.09);}
+  .chip.active img{filter:none;opacity:1;}
+  .chip:hover{color:var(--text);}
+
+  /* search bar */
+  .searchbar{display:flex;gap:10px;}
+  .searchbar input[type=text]{
+    flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);
+    padding:13px 16px;border-radius:12px;font-size:15px;font-family:inherit;
+  }
+  .searchbar input[type=text]:focus{outline:none;border-color:var(--gold-dim);}
+  .toggle-group{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .toggle-group button{
+    background:none;border:none;color:var(--muted);padding:0 16px;font-size:13.5px;
+    font-family:inherit;cursor:pointer;transition:.15s;
+  }
+  .toggle-group button.active{background:var(--gold);color:#181305;font-weight:600;}
+
+  /* results */
+  #results{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;
+  }
+  .card{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border);transition:.15s;cursor:pointer;}
+  .card:hover{background:var(--card-hover);transform:translateY(-2px);}
+  .poster{width:100%;aspect-ratio:2/3;background:var(--surface) center/cover no-repeat;position:relative;}
+  .poster .rating{
+    position:absolute;top:8px;left:8px;background:rgba(15,17,21,.85);color:var(--gold);
+    font-size:11.5px;font-weight:600;padding:3px 7px;border-radius:7px;
+  }
+  .card-body{padding:10px 12px 12px;}
+  .card-title{font-size:13.5px;font-weight:600;line-height:1.3;margin:0 0 3px;}
+  .card-year{font-size:12px;color:var(--muted);margin:0 0 8px;}
+  .badge-row{display:flex;flex-wrap:wrap;gap:4px;}
+  .badge-row img{width:18px;height:18px;border-radius:4px;}
+
+  .empty{
+    text-align:center;color:var(--muted);padding:60px 20px;font-size:14px;line-height:1.7;
+  }
+  .empty b{color:var(--text);}
+  .spinner{
+    width:26px;height:26px;border-radius:50%;border:3px solid var(--border);
+    border-top-color:var(--gold);animation:spin .8s linear infinite;margin:40px auto;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* modal */
+  .modal-bg{
+    position:fixed;inset:0;background:rgba(10,11,14,.72);display:flex;align-items:center;justify-content:center;
+    z-index:50;padding:20px;
+  }
+  .modal{
+    background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;
+    max-width:420px;width:100%;
+  }
+  .modal h3{margin:0 0 10px;font-size:17px;}
+  .modal p{color:var(--muted);font-size:13.5px;line-height:1.7;margin:0 0 16px;}
+  .modal a{color:var(--teal);}
+  .modal input[type=text]{
+    width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:14px;font-family:inherit;
+    direction:ltr;text-align:left;
+  }
+  .modal .row{display:flex;gap:10px;}
+  .btn{
+    border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;
+    cursor:pointer;font-family:inherit;transition:.15s;
+  }
+  .btn-primary{background:var(--gold);color:#181305;flex:1;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{background:none;color:var(--muted);border:1px solid var(--border);}
+  .error-text{color:var(--danger);font-size:12.5px;margin:-8px 0 12px;}
+
+  footer{text-align:center;color:var(--muted);font-size:11.5px;padding-top:30px;opacity:.6;}
+
+  .tabs{display:flex;gap:8px;margin-bottom:26px;border-bottom:1px solid var(--border);}
+  .tab-btn{
+    background:none;border:none;color:var(--muted);font-family:'Heebo',sans-serif;
+    font-size:14.5px;font-weight:600;padding:10px 4px 12px;cursor:pointer;
+    border-bottom:2px solid transparent;margin-inline-end:18px;transition:.15s;
+  }
+  .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+  .tab-btn:hover{color:var(--text);}
+
+  .api-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;}
+  .api-card .row{display:flex;gap:10px;margin-top:4px;}
+  .api-card input[type=text]{
+    flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    padding:11px 14px;border-radius:10px;font-size:14px;font-family:inherit;
+    direction:ltr;text-align:left;
+  }
+  .api-status{font-size:13px;color:var(--teal);margin:0 0 10px;}
+  .api-status.missing{color:var(--muted);}
+  .api-hint{font-size:12px;color:var(--muted);margin:10px 0 0;}
+  .api-hint a{color:var(--teal);}
+
+  .detail-modal{
+    background:var(--surface);border:1px solid var(--border);border-radius:16px;
+    max-width:640px;width:100%;max-height:88vh;overflow-y:auto;position:relative;
+  }
+  .detail-close{
+    position:absolute;top:12px;left:12px;background:rgba(15,17,21,.75);border:none;color:var(--text);
+    width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;z-index:2;
+  }
+  .detail-hero{width:100%;aspect-ratio:16/8;background:var(--card) center/cover no-repeat;position:relative;}
+  .detail-body{padding:20px 22px 26px;}
+  .detail-title{font-size:20px;font-weight:700;margin:0 0 6px;}
+  .detail-meta{font-size:13px;color:var(--muted);margin:0 0 14px;}
+  .detail-meta b{color:var(--gold);}
+  .detail-genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+  .detail-genres span{background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:999px;font-size:12px;color:var(--muted);}
+  .detail-overview{font-size:14px;line-height:1.8;color:var(--text);margin:0 0 18px;}
+  .detail-section-title{font-size:12.5px;color:var(--muted);margin:0 0 8px;font-weight:600;}
+  .detail-cast{font-size:13.5px;color:var(--text);margin:0 0 18px;line-height:1.7;}
+  .detail-providers{display:flex;flex-wrap:wrap;gap:10px;}
+  .detail-providers .prov{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:12.5px;}
+  .detail-providers img{width:22px;height:22px;border-radius:5px;}
+  .detail-loading{padding:60px 0;text-align:center;color:var(--muted);}
+
+  @media (max-width:480px){
+    #results{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="dot"></span>מה יש לצפות?</div>
+  </header>
+
+  <div class="tabs" id="tabsBar">
+    <button class="tab-btn active" data-tab="services">שירותים וערוצים</button>
+    <button class="tab-btn" data-tab="search">חיפוש תכנים</button>
+    <button class="tab-btn" data-tab="recommend">תכנים מומלצים</button>
+  </div>
+
+  <div id="tabServices" class="tab-panel">
+
+  <section>
+    <div class="section-head">
+      <h2>מפתח API</h2>
+      <span class="hint">נשמר בדפדפן שלכם</span>
+    </div>
+    <div class="api-card">
+      <p id="apiStatusText" class="api-status"></p>
+      <div class="row">
+        <input type="text" id="apiKeyInlineInput" placeholder="הדביקו כאן את מפתח ה-API">
+        <button class="btn btn-primary" id="saveKeyInlineBtn" style="flex:0 0 auto;">שמירה</button>
+      </div>
+      <div class="error-text" id="apiKeyInlineError" style="display:none;"></div>
+      <p class="api-hint">אין מפתח? הכינו אחד חינם ב-<a href="https://www.themoviedb.org/settings/api" target="_blank">הגדרות החשבון ב-TMDB</a>.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>המנויים שלי</h2>
+      <span class="hint" id="providerHint">טוען שירותים זמינים בישראל…</span>
+    </div>
+    <div id="providerGrid"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>לוח שידורים השבוע</h2>
+      <span class="hint">ערוצים ליניאריים — לא VOD</span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="https://tv-guide.walla.co.il/" target="_blank" class="chip" style="text-decoration:none;">📺 לוח שידורים — וואלה</a>
+      <a href="https://www.hot.net.il/heb/tv/tvguide/" target="_blank" class="chip" style="text-decoration:none;">📺 לוח שידורים — HOT</a>
+      <a href="https://www.yes.co.il/content/tv/broadcast/" target="_blank" class="chip" style="text-decoration:none;">📺 לוח שידורים — יס</a>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>שירותי טלוויזיה ישראליים</h2>
+      <span class="hint">ללא חיפוש אוטומטי — ראו הסבר למטה</span>
+    </div>
+    <div id="ilProviderGrid"></div>
+    <div id="ilNote" style="display:none;margin-top:12px;font-size:13px;color:var(--muted);line-height:1.8;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+      לשירותים האלה אין מאגר תוכן פתוח לחיפוש, אז הם לא משולבים בחיפוש למעלה. אפשר לבדוק זמינות ישירות:
+      <span id="ilLinks"></span>
+    </div>
+  </section>
+
+  </div><!-- /tabServices -->
+
+  <div id="tabSearch" class="tab-panel" style="display:none;">
+
+  <section>
+    <div class="section-head">
+      <h2>חיפוש תוכן</h2>
+    </div>
+    <div class="searchbar">
+      <input type="text" id="searchInput" placeholder="חפשו סרט או סדרה…">
+      <div class="toggle-group" id="typeToggle">
+        <button data-type="all" class="active">הכל</button>
+        <button data-type="movie">סרטים</button>
+        <button data-type="tv">סדרות</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2 id="resultsTitle">פופולרי אצלכם עכשיו</h2>
+    </div>
+    <div id="results"></div>
+  </section>
+
+  </div><!-- /tabSearch -->
+
+  <div id="tabRecommend" class="tab-panel" style="display:none;">
+
+  <section>
+    <div class="section-head">
+      <h2>תכנים מומלצים</h2>
+      <span class="hint">על סמך מגמות צפייה וביקוש עולמי</span>
+    </div>
+    <div class="searchbar" style="flex-wrap:wrap;">
+      <div class="toggle-group" id="recCatToggle">
+        <button data-cat="trending" class="active">חם השבוע</button>
+        <button data-cat="top_rated">הכי מדורגים</button>
+        <button data-cat="popular">הכי פופולריים</button>
+      </div>
+      <div class="toggle-group" id="recTypeToggle">
+        <button data-type="all" class="active">הכל</button>
+        <button data-type="movie">סרטים</button>
+        <button data-type="tv">סדרות</button>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13.5px;color:var(--muted);cursor:pointer;">
+      <input type="checkbox" id="recOnlyMine" style="accent-color:var(--gold);width:16px;height:16px;">
+      הצג רק תוכן שזמין במנויים שסימנתי
+    </label>
+  </section>
+
+  <section>
+    <div id="recResults"></div>
+  </section>
+
+  </div><!-- /tabRecommend -->
+
+  <footer>נתוני תוכן וזמינות מסופקים על ידי TMDB · לא נתמך רשמית על ידי TMDB</footer>
+</div>
+
+<div class="modal-bg" id="detailModalBg" style="display:none;">
+  <div class="detail-modal">
+    <button class="detail-close" id="detailCloseBtn">✕</button>
+    <div id="detailContent"><div class="detail-loading">טוען…</div></div>
+  </div>
+</div>
+
+<script>
+const IMG_BASE = 'https://image.tmdb.org/t/p/';
+let apiKey = localStorage.getItem('tmdb_api_key') || '';
+let allProviders = [];
+let selectedProviders = new Set(JSON.parse(localStorage.getItem('my_providers') || '[]'));
+let currentType = 'all';
+let searchTimer = null;
+
+const el = (id) => document.getElementById(id);
+
+function renderApiStatus(){
+  const status = el('apiStatusText');
+  if(apiKey){
+    status.textContent = `מפתח פעיל (${apiKey.slice(0,4)}…${apiKey.slice(-4)})`;
+    status.classList.remove('missing');
+  } else {
+    status.textContent = 'לא הוגדר מפתח עדיין — הדביקו אחד למטה כדי להתחיל.';
+    status.classList.add('missing');
+  }
+}
+
+function showKeyError(msg){
+  el('apiKeyInlineError').style.display = 'block';
+  el('apiKeyInlineError').textContent = msg;
+}
+function hideKeyError(){ el('apiKeyInlineError').style.display = 'none'; }
+
+el('saveKeyInlineBtn').addEventListener('click', async () => {
+  const val = el('apiKeyInlineInput').value.trim();
+  if(!val){ showKeyError('צריך להזין מפתח API כדי להמשיך.'); return; }
+  el('saveKeyInlineBtn').textContent = 'בודק…';
+  const ok = await testKey(val);
+  el('saveKeyInlineBtn').textContent = 'שמירה';
+  if(!ok){ showKeyError('המפתח לא התקבל. ודאו שהעתקתם את ה-API Key (v3 auth) המלא.'); return; }
+  hideKeyError();
+  apiKey = val;
+  localStorage.setItem('tmdb_api_key', apiKey);
+  el('apiKeyInlineInput').value = '';
+  renderApiStatus();
+  loadProviders().then(runQuery);
+});
+
+// tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    el('tabServices').style.display = btn.dataset.tab === 'services' ? 'block' : 'none';
+    el('tabSearch').style.display = btn.dataset.tab === 'search' ? 'block' : 'none';
+    el('tabRecommend').style.display = btn.dataset.tab === 'recommend' ? 'block' : 'none';
+    if(btn.dataset.tab === 'recommend') runRecommend();
+  });
+});
+
+async function testKey(key){
+  try{
+    const r = await fetch(`https://api.themoviedb.org/3/configuration?api_key=${key}`);
+    return r.ok;
+  }catch(e){ return false; }
+}
+
+async function fetchJSON(path, params={}){
+  const url = new URL(`https://api.themoviedb.org/3${path}`);
+  url.searchParams.set('api_key', apiKey);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k,v));
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('tmdb_error');
+  return r.json();
+}
+
+async function loadProviders(){
+  el('providerHint').textContent = 'טוען שירותים זמינים בישראל…';
+  try{
+    const [movieP, tvP, globalP] = await Promise.all([
+      fetchJSON('/watch/providers/movie', {watch_region:'IL', language:'he-IL'}),
+      fetchJSON('/watch/providers/tv', {watch_region:'IL', language:'he-IL'}),
+      fetchJSON('/watch/providers/movie', {language:'he-IL'}),
+    ]);
+    const ilMap = new Map();
+    [...movieP.results, ...tvP.results].forEach(p => {
+      if(!ilMap.has(p.provider_id)) ilMap.set(p.provider_id, p);
+    });
+    const globalMap = new Map();
+    globalP.results.forEach(p => {
+      if(!globalMap.has(p.provider_id)) globalMap.set(p.provider_id, p);
+    });
+
+    // Resolve each whitelisted service: prefer the IL-region entry (confirmed by TMDB
+    // for Israel); fall back to the global catalog entry if TMDB's IL list omits it
+    // (this happens — e.g. Disney+ is genuinely available in Israel but sometimes
+    // missing from the IL-specific provider list).
+    const resolved = [];
+    WHITELIST.forEach(w => {
+      const fromIL = [...ilMap.values()].find(p => matchesWhitelist(p.provider_name, w));
+      const fromGlobal = [...globalMap.values()].find(p => matchesWhitelist(p.provider_name, w));
+      const p = fromIL || fromGlobal;
+      if(p && !resolved.some(r => r.provider_id === p.provider_id)) resolved.push(p);
+    });
+
+    allProviders = resolved;
+    renderProviders();
+    el('providerHint').textContent = 'סמנו את השירותים שאתם מנויים עליהם';
+  }catch(e){
+    el('providerHint').textContent = 'לא הצלחנו לטעון את רשימת השירותים. בדקו את החיבור לאינטרנט או את המפתח.';
+  }
+}
+
+// Only services confirmed to genuinely operate in Israel — order here is display order.
+const WHITELIST = [
+  'netflix', 'disney plus', 'apple tv plus', 'amazon prime video',
+  'hbo max', 'max', 'discovery plus', 'youtube premium',
+  'crunchyroll', 'mubi', 'curiosity stream'
+];
+function matchesWhitelist(providerName, whitelistEntry){
+  const name = providerName.toLowerCase();
+  return name === whitelistEntry || name.startsWith(whitelistEntry) || name.replace('+','').trim() === whitelistEntry;
+}
+
+function makeChip(p){
+  const chip = document.createElement('div');
+  chip.className = 'chip' + (selectedProviders.has(p.provider_id) ? ' active' : '');
+  chip.innerHTML = `<img src="${IMG_BASE}w45${p.logo_path}" alt=""><span>${p.provider_name}</span>`;
+  chip.addEventListener('click', () => {
+    if(selectedProviders.has(p.provider_id)) selectedProviders.delete(p.provider_id);
+    else selectedProviders.add(p.provider_id);
+    localStorage.setItem('my_providers', JSON.stringify([...selectedProviders]));
+    chip.classList.toggle('active');
+    runQuery();
+  });
+  return chip;
+}
+
+function renderProviders(){
+  const grid = el('providerGrid');
+  grid.innerHTML = '';
+  allProviders.forEach(p => grid.appendChild(makeChip(p)));
+}
+
+el('typeToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  [...el('typeToggle').children].forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentType = btn.dataset.type;
+  runQuery();
+});
+
+el('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runQuery, 450);
+});
+
+function setResultsState(html){ el('results').innerHTML = html; }
+
+async function runQuery(){
+  if(!apiKey){
+    setResultsState('<div class="empty">עוד לא הוגדר מפתח API.<br><b>עברו ללשונית "שירותים וערוצים"</b> והדביקו שם את המפתח כדי להתחיל לחפש.</div>');
+    return;
+  }
+  const query = el('searchInput').value.trim();
+
+  if(selectedProviders.size === 0){
+    el('resultsTitle').textContent = query ? `תוצאות עבור "${query}"` : 'פופולרי עכשיו';
+    if(!query){
+      setResultsState(`<div class="empty">עוד לא סימנתם מנויים.<br><b>סמנו למעלה את השירותים שלכם</b> כדי לראות מה זמין לכם לצפייה, או חפשו כותר ספציפי.</div>`);
+      return;
+    }
+  } else {
+    el('resultsTitle').textContent = query ? `תוצאות עבור "${query}"` : 'פופולרי אצלכם עכשיו';
+  }
+
+  setResultsState('<div class="spinner"></div>');
+
+  try{
+    let items = [];
+    if(query){
+      items = await searchByText(query);
+    } else {
+      items = await browseByProviders();
+    }
+    const emptyHtml = query
+      ? `<div class="empty">לא נמצאו תוצאות זמינות עבור "<b>${query}</b>" במנויים שסימנתם.<br>נסו לסמן שירותים נוספים או לחפש כותר אחר.</div>`
+      : `<div class="empty">לא מצאנו כרגע תוכן פופולרי במנויים שסימנתם.</div>`;
+    renderResults('results', items, emptyHtml);
+  }catch(e){
+    setResultsState('<div class="empty">משהו השתבש בטעינת התוצאות. נסו שוב בעוד רגע.</div>');
+  }
+}
+
+let recCategory = 'trending';
+let recType = 'all';
+
+el('recCatToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  [...el('recCatToggle').children].forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  recCategory = btn.dataset.cat;
+  runRecommend();
+});
+el('recTypeToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  [...el('recTypeToggle').children].forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  recType = btn.dataset.type;
+  runRecommend();
+});
+el('recOnlyMine').addEventListener('change', runRecommend);
+
+async function runRecommend(){
+  if(!apiKey){
+    el('recResults').innerHTML = '<div class="empty">עוד לא הוגדר מפתח API.<br><b>עברו ללשונית "שירותים וערוצים"</b> והדביקו שם את המפתח כדי להתחיל.</div>';
+    return;
+  }
+  el('recResults').innerHTML = '<div class="spinner"></div>';
+  try{
+    const types = recType === 'all' ? ['movie','tv'] : [recType];
+    let all = [];
+    for(const type of types){
+      let path;
+      if(recCategory === 'trending') path = `/trending/${type}/week`;
+      else if(recCategory === 'top_rated') path = `/${type}/top_rated`;
+      else path = `/${type}/popular`;
+      const data = await fetchJSON(path, {language:'he-IL', region:'IL'});
+      data.results.filter(r => r.poster_path).forEach(r => all.push(normalize(r, type)));
+    }
+    all.sort((a,b) => b.popularity - a.popularity);
+    let items = all.slice(0, 24);
+
+    const onlyMine = el('recOnlyMine').checked;
+    if(onlyMine && selectedProviders.size > 0){
+      const withProviders = await Promise.all(items.map(async i => {
+        try{
+          const prov = await fetchJSON(`/${i.type}/${i.id}/watch/providers`);
+          const flatrate = prov.results?.IL?.flatrate || [];
+          const matched = flatrate.some(f => selectedProviders.has(f.provider_id));
+          return {item: {...i, flatrate}, matched};
+        }catch(e){ return {item: i, matched:false}; }
+      }));
+      items = withProviders.filter(w => w.matched).map(w => w.item);
+    }
+
+    const emptyHtml = onlyMine
+      ? '<div class="empty">לא נמצא תוכן מומלץ שזמין כרגע במנויים שסימנתם.<br>נסו לבטל את הסינון או לסמן שירותים נוספים.</div>'
+      : '<div class="empty">לא הצלחנו לטעון המלצות כרגע.</div>';
+    renderResults('recResults', items, emptyHtml);
+  }catch(e){
+    el('recResults').innerHTML = '<div class="empty">משהו השתבש בטעינת ההמלצות. נסו שוב בעוד רגע.</div>';
+  }
+}
+
+async function browseByProviders(){
+  const providerStr = [...selectedProviders].join('|');
+  const types = currentType === 'all' ? ['movie','tv'] : [currentType];
+  let all = [];
+  for(const type of types){
+    const data = await fetchJSON(`/discover/${type}`, {
+      watch_region:'IL', with_watch_providers: providerStr, watch_monetization_types:'flatrate',
+      sort_by:'popularity.desc', language:'he-IL', 'vote_count.gte': 20
+    });
+    data.results.forEach(r => all.push(normalize(r, type)));
+  }
+  all.sort((a,b) => b.popularity - a.popularity);
+  return all.slice(0, 24);
+}
+
+async function searchByText(query){
+  const data = await fetchJSON('/search/multi', {query, language:'he-IL'});
+  const candidates = data.results
+    .filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && (r.poster_path))
+    .filter(r => currentType === 'all' || r.media_type === currentType)
+    .slice(0, 20);
+
+  const withProviders = await Promise.all(candidates.map(async (r) => {
+    try{
+      const prov = await fetchJSON(`/${r.media_type}/${r.id}/watch/providers`);
+      const flatrate = prov.results?.IL?.flatrate || [];
+      const matchedIds = flatrate.map(f => f.provider_id).filter(id => selectedProviders.has(id));
+      return {item: normalize(r, r.media_type), flatrate, matchedIds};
+    }catch(e){
+      return {item: normalize(r, r.media_type), flatrate:[], matchedIds:[]};
+    }
+  }));
+
+  if(selectedProviders.size === 0) return withProviders.map(w => ({...w.item, flatrate:w.flatrate}));
+
+  const matched = withProviders.filter(w => w.matchedIds.length > 0);
+  return matched.map(w => ({...w.item, flatrate:w.flatrate}));
+}
+
+function normalize(r, type){
+  return {
+    id: r.id, type,
+    title: r.title || r.name || '',
+    date: r.release_date || r.first_air_date || '',
+    poster: r.poster_path,
+    rating: r.vote_average,
+    popularity: r.popularity || 0,
+    flatrate: r.flatrate || null,
+  };
+}
+
+async function renderResults(containerId, items, emptyHtml){
+  const container = el(containerId);
+  if(items.length === 0){
+    container.innerHTML = emptyHtml;
+    return;
+  }
+
+  const needsProviders = items.some(i => !i.flatrate);
+  let providerMap = {};
+  if(needsProviders){
+    const results = await Promise.all(items.map(async i => {
+      try{
+        const prov = await fetchJSON(`/${i.type}/${i.id}/watch/providers`);
+        return [i.id + i.type, prov.results?.IL?.flatrate || []];
+      }catch(e){ return [i.id + i.type, []]; }
+    }));
+    providerMap = Object.fromEntries(results);
+  }
+
+  container.innerHTML = items.map(i => {
+    const flatrate = i.flatrate || providerMap[i.id + i.type] || [];
+    const year = i.date ? new Date(i.date).getFullYear() : '';
+    const poster = i.poster ? `${IMG_BASE}w342${i.poster}` : '';
+    const badges = flatrate.slice(0,5).map(p => `<img src="${IMG_BASE}w45${p.logo_path}" title="${p.provider_name}">`).join('');
+    return `
+      <div class="card" data-id="${i.id}" data-type="${i.type}">
+        <div class="poster" style="background-image:url('${poster}')">
+          ${i.rating ? `<span class="rating">★ ${i.rating.toFixed(1)}</span>` : ''}
+        </div>
+        <div class="card-body">
+          <p class="card-title">${i.title}</p>
+          <p class="card-year">${year}${year && i.type === 'tv' ? ' · סדרה' : year ? ' · סרט' : ''}</p>
+          <div class="badge-row">${badges}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+const IL_SERVICES = [
+  {id:'yes', name:'yes', url:'https://www.yes.co.il'},
+  {id:'sting', name:'+STING', url:null},
+  {id:'partner', name:'פרטנר TV', url:null},
+  {id:'cellcom', name:'סלקום TV', url:null},
+  {id:'hot', name:'HOT', url:null},
+];
+let selectedIL = new Set(JSON.parse(localStorage.getItem('my_il_providers') || '[]'));
+
+function renderILProviders(){
+  const grid = el('ilProviderGrid');
+  grid.innerHTML = '';
+  IL_SERVICES.forEach(s => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (selectedIL.has(s.id) ? ' active' : '');
+    chip.innerHTML = `<span>${s.name}</span>`;
+    chip.addEventListener('click', () => {
+      if(selectedIL.has(s.id)) selectedIL.delete(s.id); else selectedIL.add(s.id);
+      localStorage.setItem('my_il_providers', JSON.stringify([...selectedIL]));
+      renderILProviders();
+      updateILNote();
+    });
+    grid.appendChild(chip);
+  });
+}
+
+function updateILNote(){
+  const note = el('ilNote');
+  if(selectedIL.size === 0){ note.style.display = 'none'; return; }
+  note.style.display = 'block';
+  const withLinks = IL_SERVICES.filter(s => selectedIL.has(s.id) && s.url);
+  const withoutLinks = IL_SERVICES.filter(s => selectedIL.has(s.id) && !s.url);
+  let html = withLinks.map(s => `<a href="${s.url}" target="_blank" style="color:var(--teal);margin-inline-start:6px;">${s.name}</a>`).join(' · ');
+  if(withoutLinks.length){
+    html += (html ? ' · ' : '') + withoutLinks.map(s => s.name).join(' · ') + ' (דרך האפליקציה שלהם)';
+  }
+  el('ilLinks').innerHTML = html;
+}
+
+// content detail modal
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('.card');
+  if(card && card.dataset.id) openDetail(card.dataset.id, card.dataset.type);
+});
+el('detailCloseBtn').addEventListener('click', closeDetail);
+el('detailModalBg').addEventListener('click', (e) => {
+  if(e.target.id === 'detailModalBg') closeDetail();
+});
+
+function closeDetail(){ el('detailModalBg').style.display = 'none'; }
+
+async function openDetail(id, type){
+  el('detailModalBg').style.display = 'flex';
+  el('detailContent').innerHTML = '<div class="detail-loading">טוען…</div>';
+  try{
+    const data = await fetchJSON(`/${type}/${id}`, {
+      language:'he-IL', append_to_response:'credits,watch/providers'
+    });
+    const title = data.title || data.name;
+    const year = (data.release_date || data.first_air_date || '').slice(0,4);
+    const backdrop = data.backdrop_path ? `${IMG_BASE}w780${data.backdrop_path}` : (data.poster_path ? `${IMG_BASE}w780${data.poster_path}` : '');
+    const genres = (data.genres || []).map(g => `<span>${g.name}</span>`).join('');
+    const runtime = type === 'movie'
+      ? (data.runtime ? `${data.runtime} דק'` : '')
+      : (data.number_of_seasons ? `${data.number_of_seasons} עונות · ${data.number_of_episodes || ''} פרקים` : '');
+    const cast = (data.credits?.cast || []).slice(0,5).map(c => c.name).join(', ');
+    const flatrate = data['watch/providers']?.results?.IL?.flatrate || [];
+    const providersHtml = flatrate.length
+      ? flatrate.map(p => `<div class="prov"><img src="${IMG_BASE}w45${p.logo_path}"><span>${p.provider_name}</span></div>`).join('')
+      : '<span style="color:var(--muted);font-size:13px;">לא נמצא זמין בהזרמה בישראל כרגע</span>';
+
+    el('detailContent').innerHTML = `
+      <div class="detail-hero" style="background-image:url('${backdrop}')"></div>
+      <div class="detail-body">
+        <p class="detail-title">${title}</p>
+        <p class="detail-meta">
+          ${year ? `<b>${year}</b> · ` : ''}${type === 'tv' ? 'סדרה' : 'סרט'}${runtime ? ' · ' + runtime : ''}
+          ${data.vote_average ? ' · ★ ' + data.vote_average.toFixed(1) : ''}
+        </p>
+        ${genres ? `<div class="detail-genres">${genres}</div>` : ''}
+        ${data.overview ? `<p class="detail-overview">${data.overview}</p>` : '<p class="detail-overview" style="color:var(--muted);">אין תקציר זמין.</p>'}
+        ${cast ? `<p class="detail-section-title">שחקנים עיקריים</p><p class="detail-cast">${cast}</p>` : ''}
+        <p class="detail-section-title">זמין להזרמה ב-</p>
+        <div class="detail-providers">${providersHtml}</div>
+      </div>`;
+  }catch(e){
+    el('detailContent').innerHTML = '<div class="detail-loading">לא הצלחנו לטעון את הפרטים. נסו שוב.</div>';
+  }
+}
+
+function init(){
+  renderILProviders();
+  updateILNote();
+  renderApiStatus();
+  if(!apiKey){ return; }
+  loadProviders().then(runQuery);
+}
+
+init();
+</script>
+</body>
+</html>
