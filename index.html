@@ -436,13 +436,18 @@ async function loadProviders(){
 
 // Only services confirmed to genuinely operate in Israel — order here is display order.
 const WHITELIST = [
-  'netflix', 'disney plus', 'apple tv plus', 'amazon prime video',
-  'hbo max', 'max', 'discovery plus', 'youtube premium',
-  'crunchyroll', 'mubi', 'curiosity stream'
+  { names: ['netflix'] },
+  { names: ['disney plus'] },
+  { names: ['amazon prime video'] },
+  { names: ['apple tv plus'] },
+  { names: ['hbo max', 'max'] },
 ];
-function matchesWhitelist(providerName, whitelistEntry){
-  const name = providerName.toLowerCase();
-  return name === whitelistEntry || name.startsWith(whitelistEntry) || name.replace('+','').trim() === whitelistEntry;
+function normalizeProviderName(name){
+  return name.toLowerCase().replace(/\+/g, ' plus').replace(/\s+/g, ' ').trim();
+}
+function matchesWhitelist(providerName, entry){
+  const name = normalizeProviderName(providerName);
+  return entry.names.includes(name);
 }
 
 function makeChip(p){
