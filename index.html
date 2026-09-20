@@ -97,6 +97,13 @@
     position:absolute;top:8px;left:8px;background:rgba(15,17,21,.85);color:var(--gold);
     font-size:11.5px;font-weight:600;padding:3px 7px;border-radius:7px;
   }
+  .fav-btn{
+    position:absolute;top:6px;right:6px;background:rgba(15,17,21,.75);border:none;
+    width:28px;height:28px;border-radius:50%;font-size:15px;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;
+  }
+  .fav-btn.active{color:var(--danger);}
+  .fav-btn:hover{color:var(--danger);}
   .card-body{padding:10px 12px 12px;}
   .card-title{font-size:13.5px;font-weight:600;line-height:1.3;margin:0 0 3px;}
   .card-year{font-size:12px;color:var(--muted);margin:0 0 8px;}
@@ -202,6 +209,7 @@
     <button class="tab-btn active" data-tab="services">שירותים וערוצים</button>
     <button class="tab-btn" data-tab="search">חיפוש תכנים</button>
     <button class="tab-btn" data-tab="recommend">תכנים מומלצים</button>
+    <button class="tab-btn" data-tab="favorites">המועדפים שלי</button>
   </div>
 
   <div id="tabServices" class="tab-panel">
@@ -312,6 +320,18 @@
 
   </div><!-- /tabRecommend -->
 
+  <div id="tabFavorites" class="tab-panel" style="display:none;">
+
+  <section>
+    <div class="section-head">
+      <h2>המועדפים שלי</h2>
+      <span class="hint">נשמר בדפדפן שלכם</span>
+    </div>
+    <div id="favResults"></div>
+  </section>
+
+  </div><!-- /tabFavorites -->
+
   <footer>נתוני תוכן וזמינות מסופקים על ידי TMDB · לא נתמך רשמית על ידי TMDB</footer>
 </div>
 
@@ -373,7 +393,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     el('tabServices').style.display = btn.dataset.tab === 'services' ? 'block' : 'none';
     el('tabSearch').style.display = btn.dataset.tab === 'search' ? 'block' : 'none';
     el('tabRecommend').style.display = btn.dataset.tab === 'recommend' ? 'block' : 'none';
+    el('tabFavorites').style.display = btn.dataset.tab === 'favorites' ? 'block' : 'none';
     if(btn.dataset.tab === 'recommend') runRecommend();
+    if(btn.dataset.tab === 'favorites') renderFavoritesTab();
   });
 });
 
@@ -681,10 +703,12 @@ async function renderResults(containerId, items, emptyHtml){
     const year = i.date ? new Date(i.date).getFullYear() : '';
     const poster = i.poster ? `${IMG_BASE}w342${i.poster}` : '';
     const badges = flatrate.slice(0,5).map(p => `<img src="${IMG_BASE}w45${p.logo_path}" title="${p.provider_name}">`).join('');
+    const favActive = isFavorite(i.id, i.type) ? ' active' : '';
     return `
       <div class="card" data-id="${i.id}" data-type="${i.type}">
         <div class="poster" style="background-image:url('${poster}')">
           ${i.rating ? `<span class="rating">★ ${i.rating.toFixed(1)}</span>` : ''}
+          <button class="fav-btn${favActive}" data-fav-id="${i.id}" data-fav-type="${i.type}" data-fav-title="${i.title.replace(/"/g,'&quot;')}" data-fav-poster="${i.poster || ''}" data-fav-date="${i.date || ''}" data-fav-rating="${i.rating || ''}">${favActive ? '♥' : '♡'}</button>
         </div>
         <div class="card-body">
           <p class="card-title">${i.title}</p>
@@ -732,6 +756,49 @@ function updateILNote(){
     html += (html ? ' · ' : '') + withoutLinks.map(s => s.name).join(' · ') + ' (דרך האפליקציה שלהם)';
   }
   el('ilLinks').innerHTML = html;
+}
+
+// favorites
+let favorites = JSON.parse(localStorage.getItem('my_favorites') || '[]');
+
+function isFavorite(id, type){
+  return favorites.some(f => String(f.id) === String(id) && f.type === type);
+}
+
+function toggleFavorite(item){
+  const exists = isFavorite(item.id, item.type);
+  if(exists){
+    favorites = favorites.filter(f => !(String(f.id) === String(item.id) && f.type === item.type));
+  } else {
+    favorites.push(item);
+  }
+  localStorage.setItem('my_favorites', JSON.stringify(favorites));
+  return !exists;
+}
+
+document.addEventListener('click', (e) => {
+  const favBtn = e.target.closest('.fav-btn');
+  if(favBtn){
+    e.stopImmediatePropagation();
+    const item = {
+      id: favBtn.dataset.favId,
+      type: favBtn.dataset.favType,
+      title: favBtn.dataset.favTitle,
+      poster: favBtn.dataset.favPoster || null,
+      date: favBtn.dataset.favDate || '',
+      rating: favBtn.dataset.favRating ? parseFloat(favBtn.dataset.favRating) : null,
+    };
+    const nowActive = toggleFavorite(item);
+    favBtn.classList.toggle('active', nowActive);
+    favBtn.textContent = nowActive ? '♥' : '♡';
+    if(el('tabFavorites').style.display !== 'none') renderFavoritesTab();
+    return;
+  }
+});
+
+function renderFavoritesTab(){
+  const emptyHtml = '<div class="empty">עדיין לא סימנתם מועדפים.<br>לחצו על ה-♡ על כרטיס של סרט או סדרה בחיפוש או בהמלצות כדי להוסיף אותו לכאן.</div>';
+  renderResults('favResults', favorites, emptyHtml);
 }
 
 // content detail modal
