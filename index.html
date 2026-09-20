@@ -262,6 +262,49 @@
     </div>
   </section>
 
+  <section>
+    <div class="section-head">
+      <h2>סנכרון אוטומטי (GitHub)</h2>
+      <span class="hint">בלי לזכור לייצא בעצמכם</span>
+    </div>
+    <div class="api-card">
+      <p style="font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 14px;">
+        מחברים פעם אחת עם טוקן אישי של GitHub (החשבון שכבר מארח את האפליקציה), והאפליקציה שומרת אוטומטית
+        עותק פרטי (Gist) של המפתח, המנויים והמועדפים בכל שינוי — ומושכת אותו אוטומטית בכל מכשיר שמחברים אליו.
+      </p>
+      <p id="githubStatusText" class="api-status missing">לא מחובר</p>
+      <div class="row">
+        <input type="text" id="githubTokenInput" placeholder="הדביקו כאן טוקן אישי (עם הרשאת gist בלבד)">
+        <button class="btn btn-primary" id="githubConnectBtn" style="flex:0 0 auto;">חיבור</button>
+      </div>
+      <div class="error-text" id="githubError" style="display:none;"></div>
+      <p class="api-hint">
+        יוצרים טוקן ב-<a href="https://github.com/settings/tokens/new?scopes=gist&description=mah-yesh-litzfot" target="_blank">הגדרות הטוקנים ב-GitHub</a> —
+        חשוב לסמן <b>רק</b> את ההרשאה <code>gist</code>, לא הרשאות נוספות. הטוקן נשמר בדפדפן שלכם ומשמש רק לשמירה/קריאה של הגיבוי.
+      </p>
+      <button class="btn btn-ghost" id="githubDisconnectBtn" style="display:none;margin-top:10px;">ניתוק</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>גיבוי ידני</h2>
+      <span class="hint">לגיבוי חד-פעמי בקובץ</span>
+    </div>
+    <div class="api-card">
+      <p style="font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 14px;">
+        המפתח, המנויים והמועדפים נשמרים רק בדפדפן הזה. אם תנקו נתוני גלישה, תעברו למכשיר אחר,
+        או תשתמשו בגלישה פרטית — המידע יימחק. ייצאו גיבוי מדי פעם כדי לא לאבד אותו.
+      </p>
+      <div class="row">
+        <button class="btn btn-primary" id="exportBtn" style="flex:1;">📤 ייצוא גיבוי</button>
+        <button class="btn btn-ghost" id="importBtn" style="flex:1;">📥 ייבוא גיבוי</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none;">
+      </div>
+      <p class="api-hint">קובץ הגיבוי כולל את מפתח ה-API שלכם בטקסט גלוי — שמרו אותו במקום פרטי ואל תעלו אותו לאתר ציבורי.</p>
+    </div>
+  </section>
+
   </div><!-- /tabServices -->
 
   <div id="tabSearch" class="tab-panel" style="display:none;">
@@ -382,6 +425,7 @@ el('saveKeyInlineBtn').addEventListener('click', async () => {
   localStorage.setItem('tmdb_api_key', apiKey);
   el('apiKeyInlineInput').value = '';
   renderApiStatus();
+  scheduleGithubSync();
   loadProviders().then(runQuery);
 });
 
@@ -481,6 +525,7 @@ function makeChip(p){
     else selectedProviders.add(p.provider_id);
     localStorage.setItem('my_providers', JSON.stringify([...selectedProviders]));
     chip.classList.toggle('active');
+    scheduleGithubSync();
     runQuery();
   });
   return chip;
@@ -740,6 +785,7 @@ function renderILProviders(){
       localStorage.setItem('my_il_providers', JSON.stringify([...selectedIL]));
       renderILProviders();
       updateILNote();
+      scheduleGithubSync();
     });
     grid.appendChild(chip);
   });
@@ -773,6 +819,7 @@ function toggleFavorite(item){
     favorites.push(item);
   }
   localStorage.setItem('my_favorites', JSON.stringify(favorites));
+  scheduleGithubSync();
   return !exists;
 }
 
@@ -852,10 +899,177 @@ async function openDetail(id, type){
   }
 }
 
+// backup & restore
+el('exportBtn').addEventListener('click', () => {
+  const backup = {
+    exportedAt: new Date().toISOString(),
+    tmdb_api_key: localStorage.getItem('tmdb_api_key') || '',
+    my_providers: JSON.parse(localStorage.getItem('my_providers') || '[]'),
+    my_il_providers: JSON.parse(localStorage.getItem('my_il_providers') || '[]'),
+    my_favorites: JSON.parse(localStorage.getItem('my_favorites') || '[]'),
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mah-yesh-litzfot-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+el('importBtn').addEventListener('click', () => el('importFile').click());
+
+el('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if(data.tmdb_api_key) localStorage.setItem('tmdb_api_key', data.tmdb_api_key);
+      if(data.my_providers) localStorage.setItem('my_providers', JSON.stringify(data.my_providers));
+      if(data.my_il_providers) localStorage.setItem('my_il_providers', JSON.stringify(data.my_il_providers));
+      if(data.my_favorites) localStorage.setItem('my_favorites', JSON.stringify(data.my_favorites));
+      location.reload();
+    }catch(err){
+      alert('קובץ הגיבוי לא תקין. ודאו שזה קובץ JSON שיוצא מהאפליקציה הזו.');
+    }
+  };
+  reader.readAsText(file);
+});
+
+// GitHub Gist auto-sync
+const GIST_FILENAME = 'mah-yesh-litzfot-backup.json';
+let githubToken = localStorage.getItem('github_token') || '';
+let githubGistId = localStorage.getItem('github_gist_id') || '';
+let githubSyncTimer = null;
+
+function currentBackupObject(){
+  return {
+    exportedAt: new Date().toISOString(),
+    tmdb_api_key: localStorage.getItem('tmdb_api_key') || '',
+    my_providers: JSON.parse(localStorage.getItem('my_providers') || '[]'),
+    my_il_providers: JSON.parse(localStorage.getItem('my_il_providers') || '[]'),
+    my_favorites: JSON.parse(localStorage.getItem('my_favorites') || '[]'),
+  };
+}
+
+function applyBackupObject(data){
+  if(data.tmdb_api_key) localStorage.setItem('tmdb_api_key', data.tmdb_api_key);
+  if(data.my_providers) localStorage.setItem('my_providers', JSON.stringify(data.my_providers));
+  if(data.my_il_providers) localStorage.setItem('my_il_providers', JSON.stringify(data.my_il_providers));
+  if(data.my_favorites) localStorage.setItem('my_favorites', JSON.stringify(data.my_favorites));
+}
+
+function renderGithubStatus(){
+  const status = el('githubStatusText');
+  const disconnectBtn = el('githubDisconnectBtn');
+  if(githubToken && githubGistId){
+    status.textContent = 'מחובר — מסתנכרן אוטומטית';
+    status.classList.remove('missing');
+    disconnectBtn.style.display = 'inline-block';
+    el('githubTokenInput').style.display = 'none';
+    el('githubConnectBtn').style.display = 'none';
+  } else {
+    status.textContent = 'לא מחובר';
+    status.classList.add('missing');
+    disconnectBtn.style.display = 'none';
+    el('githubTokenInput').style.display = '';
+    el('githubConnectBtn').style.display = '';
+  }
+}
+
+function showGithubError(msg){
+  el('githubError').style.display = 'block';
+  el('githubError').textContent = msg;
+}
+function hideGithubError(){ el('githubError').style.display = 'none'; }
+
+async function githubApi(path, options={}){
+  const r = await fetch(`https://api.github.com${path}`, {
+    ...options,
+    headers: {
+      'Authorization': `token ${githubToken}`,
+      'Accept': 'application/vnd.github+json',
+      ...(options.headers || {}),
+    },
+  });
+  if(!r.ok) throw new Error(`github_error_${r.status}`);
+  return r.json();
+}
+
+async function findExistingGist(){
+  const gists = await githubApi('/gists?per_page=100');
+  const match = gists.find(g => g.files && g.files[GIST_FILENAME]);
+  return match ? match.id : null;
+}
+
+el('githubConnectBtn').addEventListener('click', async () => {
+  const token = el('githubTokenInput').value.trim();
+  if(!token){ showGithubError('צריך להדביק טוקן כדי להתחבר.'); return; }
+  hideGithubError();
+  el('githubConnectBtn').textContent = 'מתחבר…';
+  githubToken = token;
+  try{
+    let existingId = await findExistingGist();
+    if(existingId){
+      // Found a backup from another device — pull it and use it as the source of truth.
+      const gist = await githubApi(`/gists/${existingId}`);
+      const remoteData = JSON.parse(gist.files[GIST_FILENAME].content);
+      applyBackupObject(remoteData);
+      githubGistId = existingId;
+    } else {
+      // First time connecting — create a new gist from what's on this device now.
+      const created = await githubApi('/gists', {
+        method: 'POST',
+        body: JSON.stringify({
+          description: 'מה יש לצפות - גיבוי הגדרות (נוצר אוטומטית, לא לערוך ידנית)',
+          public: false,
+          files: { [GIST_FILENAME]: { content: JSON.stringify(currentBackupObject(), null, 2) } },
+        }),
+      });
+      githubGistId = created.id;
+    }
+    localStorage.setItem('github_token', githubToken);
+    localStorage.setItem('github_gist_id', githubGistId);
+    renderGithubStatus();
+    location.reload();
+  }catch(e){
+    githubToken = '';
+    showGithubError('החיבור נכשל. ודאו שהטוקן תקין ושסימנתם עבורו את הרשאת gist.');
+    el('githubConnectBtn').textContent = 'חיבור';
+  }
+});
+
+el('githubDisconnectBtn').addEventListener('click', () => {
+  if(!confirm('לנתק את הסנכרון האוטומטי? הגיבוי עצמו יישאר ב-GitHub, רק החיבור מהמכשיר הזה יוסר.')) return;
+  githubToken = '';
+  githubGistId = '';
+  localStorage.removeItem('github_token');
+  localStorage.removeItem('github_gist_id');
+  renderGithubStatus();
+});
+
+function scheduleGithubSync(){
+  if(!githubToken || !githubGistId) return;
+  clearTimeout(githubSyncTimer);
+  githubSyncTimer = setTimeout(async () => {
+    try{
+      await githubApi(`/gists/${githubGistId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          files: { [GIST_FILENAME]: { content: JSON.stringify(currentBackupObject(), null, 2) } },
+        }),
+      });
+    }catch(e){ /* silent — will retry on next change */ }
+  }, 1500);
+}
+
 function init(){
   renderILProviders();
   updateILNote();
   renderApiStatus();
+  renderGithubStatus();
   if(!apiKey){ return; }
   loadProviders().then(runQuery);
 }
