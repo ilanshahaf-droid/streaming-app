@@ -252,12 +252,13 @@
 
   <section>
     <div class="section-head">
-      <h2>שירותי טלוויזיה ישראליים</h2>
-      <span class="hint">ללא חיפוש אוטומטי — ראו הסבר למטה</span>
+      <h2>שירותים ללא חיפוש אוטומטי</h2>
+      <span class="hint">דיסני+ ושירותי טלוויזיה ישראליים</span>
     </div>
     <div id="ilProviderGrid"></div>
     <div id="ilNote" style="display:none;margin-top:12px;font-size:13px;color:var(--muted);line-height:1.8;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
-      לשירותים האלה אין מאגר תוכן פתוח לחיפוש, אז הם לא משולבים בחיפוש למעלה. אפשר לבדוק זמינות ישירות:
+      למרות שהשירותים האלה קיימים בישראל בפועל, המאגר שהחיפוש מבוסס עליו (JustWatch) עדיין לא עוקב אחרי הזמינות שלהם כאן —
+      אז אי אפשר לבדוק אוטומטית מה זמין בהם. אפשר לבדוק זמינות ישירות:
       <span id="ilLinks"></span>
     </div>
   </section>
@@ -512,7 +513,6 @@ async function loadProviders(){
 // Only services confirmed to genuinely operate in Israel — order here is display order.
 const WHITELIST = [
   { names: ['netflix'] },
-  { names: ['disney plus'] },
   { names: ['amazon prime video'] },
   { names: ['apple tv plus', 'apple tv'] },
   { names: ['hbo max', 'max'] },
@@ -792,6 +792,7 @@ async function renderResults(containerId, items, emptyHtml){
 }
 
 const IL_SERVICES = [
+  {id:'disney', name:'+Disney', url:'https://www.disneyplus.com/he-il'},
   {id:'yes', name:'yes', url:'https://www.yes.co.il'},
   {id:'sting', name:'+STING', url:null},
   {id:'partner', name:'פרטנר TV', url:null},
