@@ -87,7 +87,7 @@
   .toggle-group button.active{background:var(--gold);color:#181305;font-weight:600;}
 
   /* results */
-  #results{
+  #results, #recResults, #favResults{
     display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;
   }
   .card{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border);transition:.15s;cursor:pointer;}
@@ -194,7 +194,7 @@
   .detail-loading{padding:60px 0;text-align:center;color:var(--muted);}
 
   @media (max-width:480px){
-    #results{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
+    #results, #recResults, #favResults{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
   }
 </style>
 </head>
