@@ -1014,17 +1014,34 @@ el('syncLogoutBtn').addEventListener('click', async () => {
   renderSyncStatus();
 });
 
+function mergeFavorites(localFavs, cloudFavs){
+  const merged = [...localFavs];
+  cloudFavs.forEach(cf => {
+    if(!merged.some(lf => String(lf.id) === String(cf.id) && lf.type === cf.type)) merged.push(cf);
+  });
+  return merged;
+}
+
 async function pullFromCloud(){
   if(!syncUser) return;
   try{
     const { data, error } = await sb.from('app_backups').select('data').eq('user_id', syncUser.id).maybeSingle();
     if(error) throw error;
-    if(data && data.data){
-      applyBackupObject(data.data);
-    } else {
-      // first time this account connects — seed the cloud with what's on this device
-      await sb.from('app_backups').upsert({ user_id: syncUser.id, data: currentBackupObject(), updated_at: new Date().toISOString() });
-    }
+    const cloud = (data && data.data) || {};
+    const local = currentBackupObject();
+
+    // Merge rather than overwrite, so a stale/empty cloud copy (e.g. from a
+    // device that hasn't synced yet) never wipes out real local data.
+    const merged = {
+      tmdb_api_key: cloud.tmdb_api_key || local.tmdb_api_key,
+      my_providers: (cloud.my_providers && cloud.my_providers.length) ? cloud.my_providers : local.my_providers,
+      my_il_providers: (cloud.my_il_providers && cloud.my_il_providers.length) ? cloud.my_il_providers : local.my_il_providers,
+      my_favorites: mergeFavorites(local.my_favorites, cloud.my_favorites || []),
+    };
+    applyBackupObject(merged);
+
+    // Push the reconciled result back so both sides converge.
+    await sb.from('app_backups').upsert({ user_id: syncUser.id, data: merged, updated_at: new Date().toISOString() });
   }catch(e){ /* silent — will retry via normal sync on next change */ }
 }
 
@@ -1042,15 +1059,24 @@ function scheduleSync(){
   }, 1500);
 }
 
+function reloadLocalState(){
+  apiKey = localStorage.getItem('tmdb_api_key') || '';
+  selectedProviders = new Set(JSON.parse(localStorage.getItem('my_providers') || '[]'));
+  selectedIL = new Set(JSON.parse(localStorage.getItem('my_il_providers') || '[]'));
+  favorites = JSON.parse(localStorage.getItem('my_favorites') || '[]');
+}
+
 sb.auth.onAuthStateChange(async (event, session) => {
   if(session?.user){
     syncUser = session.user;
     renderSyncStatus();
     await pullFromCloud();
+    reloadLocalState();
     renderApiStatus();
     renderILProviders();
     updateILNote();
-    if(apiKey) loadProviders().then(runQuery);
+    if(apiKey) loadProviders().then(runQuery); else runQuery();
+    if(el('tabFavorites').style.display !== 'none') renderFavoritesTab();
   } else {
     syncUser = null;
     renderSyncStatus();
