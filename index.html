@@ -611,7 +611,7 @@ async function runQuery(){
       items = await browseByProviders();
     }
     const emptyHtml = query
-      ? `<div class="empty">לא נמצאו תוצאות זמינות עבור "<b>${query}</b>" במנויים שסימנתם.<br>נסו לסמן שירותים נוספים או לחפש כותר אחר.</div>`
+      ? `<div class="empty">לא נמצאו תוצאות זמינות עבור "<b>${query}</b>" במנויים שסימנתם.<br>נסו לסמן שירותים נוספים, או לחפש בשם המקורי באנגלית — לפעמים תכנים חדשים עוד לא רשומים במאגר תחת השם העברי.</div>`
       : `<div class="empty">לא מצאנו כרגע תוכן פופולרי במנויים שסימנתם.</div>`;
     renderResults('results', items, emptyHtml);
   }catch(e){
@@ -698,13 +698,31 @@ async function browseByProviders(){
 }
 
 async function searchByText(query){
-  const data = await fetchJSON('/search/multi', {query, language:'he-IL'});
-  const candidates = data.results
-    .filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && (r.poster_path))
-    .filter(r => currentType === 'all' || r.media_type === currentType)
-    .slice(0, 20);
+  // Fetch several pages of results — a generic word like "אהבה" can match
+  // hundreds of titles, and the ones actually available on the person's
+  // subscriptions aren't necessarily in TMDB's most-popular first page.
+  const PAGES_TO_FETCH = 4; // 4 x 20 = up to 80 candidates
+  const pages = await Promise.all(
+    Array.from({length: PAGES_TO_FETCH}, (_, i) =>
+      fetchJSON('/search/multi', {query, language:'he-IL', page: i + 1}).catch(() => ({results: []}))
+    )
+  );
+  const allResults = pages.flatMap(p => p.results || []);
 
-  const withProviders = await Promise.all(candidates.map(async (r) => {
+  const candidates = allResults
+    .filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && (r.poster_path))
+    .filter(r => currentType === 'all' || r.media_type === currentType);
+
+  // de-dupe (a title can theoretically repeat across pages if TMDB's ranking shifts)
+  const seen = new Set();
+  const uniqueCandidates = candidates.filter(r => {
+    const key = r.media_type + r.id;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const withProviders = await Promise.all(uniqueCandidates.map(async (r) => {
     try{
       const prov = await fetchJSON(`/${r.media_type}/${r.id}/watch/providers`);
       const flatrate = prov.results?.IL?.flatrate || [];
@@ -715,7 +733,7 @@ async function searchByText(query){
     }
   }));
 
-  if(selectedProviders.size === 0) return withProviders.map(w => ({...w.item, flatrate:w.flatrate}));
+  if(selectedProviders.size === 0) return withProviders.map(w => ({...w.item, flatrate:w.flatrate})).slice(0, 24);
 
   const matched = withProviders.filter(w => w.matchedIds.length > 0);
   return matched.map(w => ({...w.item, flatrate:w.flatrate}));
