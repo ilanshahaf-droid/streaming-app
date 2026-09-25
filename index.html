@@ -269,15 +269,19 @@
     </div>
     <div class="api-card">
       <p style="font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 14px;">
-        נכנסים עם כתובת המייל שלכם — בלי סיסמה, בלי קוד לזכור. בכל מכשיר, מזינים את אותו מייל ולוחצים
-        על הקישור שיישלח אליכם, וההגדרות שלכם (מפתח, מנויים, מועדפים) יופיעו אוטומטית.
+        נכנסים עם כתובת המייל שלכם — בלי סיסמה. מזינים מייל, מקבלים קוד בן 6 ספרות, ומקלידים אותו כאן.
+        ההגדרות שלכם (מפתח, מנויים, מועדפים) יופיעו אוטומטית בכל מכשיר שנכנסים בו עם אותו מייל.
       </p>
       <p id="syncStatusText" class="api-status missing">לא מחובר</p>
 
       <div id="syncLoginRow">
         <div class="row">
           <input type="text" id="syncEmailInput" placeholder="כתובת המייל שלכם" style="direction:ltr;text-align:left;">
-          <button class="btn btn-primary" id="syncLoginBtn" style="flex:0 0 auto;">שליחת קישור כניסה</button>
+          <button class="btn btn-primary" id="syncLoginBtn" style="flex:0 0 auto;">שליחת קוד</button>
+        </div>
+        <div class="row" id="syncCodeRow" style="display:none;margin-top:10px;">
+          <input type="text" id="syncCodeInput" placeholder="הקוד בן 6 הספרות מהמייל" maxlength="6" style="direction:ltr;text-align:center;letter-spacing:3px;font-weight:700;">
+          <button class="btn btn-primary" id="syncVerifyBtn" style="flex:0 0 auto;">אימות</button>
         </div>
       </div>
       <div class="error-text" id="syncError" style="display:none;"></div>
@@ -972,10 +976,18 @@ function renderSyncStatus(){
   status.classList.toggle('missing', !connected);
   el('syncLoginRow').style.display = connected ? 'none' : 'block';
   el('syncLogoutBtn').style.display = connected ? 'inline-block' : 'none';
+  if(!connected){
+    el('syncCodeRow').style.display = 'none';
+    el('syncEmailInput').disabled = false;
+    el('syncLoginBtn').disabled = false;
+    el('syncCodeInput').value = '';
+  }
 }
 
 function showSyncError(msg){ el('syncError').style.display = 'block'; el('syncError').textContent = msg; }
 function hideSyncError(){ el('syncError').style.display = 'none'; }
+
+let pendingSyncEmail = '';
 
 el('syncLoginBtn').addEventListener('click', async () => {
   const email = el('syncEmailInput').value.trim();
@@ -983,18 +995,37 @@ el('syncLoginBtn').addEventListener('click', async () => {
   hideSyncError();
   el('syncLoginBtn').textContent = 'שולח…';
   try{
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: location.href.split('#')[0].split('?')[0] },
-    });
+    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
     if(error) throw error;
-    showSyncError('נשלח קישור למייל — פתחו אותו כדי להתחבר (בדקו גם ספאם).');
+    pendingSyncEmail = email;
+    el('syncCodeRow').style.display = 'flex';
+    el('syncEmailInput').disabled = true;
+    el('syncLoginBtn').disabled = true;
+    showSyncError('נשלח קוד למייל — הקלידו אותו למטה (בדקו גם ספאם).');
     el('syncError').style.color = 'var(--teal)';
   }catch(e){
-    showSyncError('שליחת הקישור נכשלה. נסו שוב בעוד רגע.');
+    showSyncError('שליחת הקוד נכשלה. נסו שוב בעוד רגע.');
     el('syncError').style.color = '';
   }
-  el('syncLoginBtn').textContent = 'שליחת קישור כניסה';
+  el('syncLoginBtn').textContent = 'שליחת קוד';
+});
+
+el('syncVerifyBtn').addEventListener('click', async () => {
+  const code = el('syncCodeInput').value.trim();
+  if(!code){ showSyncError('הקלידו את הקוד שקיבלתם במייל.'); return; }
+  el('syncError').style.color = '';
+  hideSyncError();
+  el('syncVerifyBtn').textContent = 'מאמת…';
+  try{
+    const { error } = await sb.auth.verifyOtp({ email: pendingSyncEmail, token: code, type: 'email' });
+    if(error) throw error;
+    // onAuthStateChange handles the rest (pulling settings, re-rendering)
+  }catch(e){
+    showSyncError('הקוד שגוי או שפג תוקפו. אפשר לבקש קוד חדש.');
+    el('syncEmailInput').disabled = false;
+    el('syncLoginBtn').disabled = false;
+  }
+  el('syncVerifyBtn').textContent = 'אימות';
 });
 
 el('syncLogoutBtn').addEventListener('click', async () => {
