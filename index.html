@@ -264,29 +264,30 @@
 
   <section>
     <div class="section-head">
-      <h2>סנכרון אוטומטי (GitHub)</h2>
-      <span class="hint">בלי לזכור לייצא בעצמכם</span>
+      <h2>סנכרון בענן</h2>
+      <span class="hint">כניסה עם מייל</span>
     </div>
     <div class="api-card">
       <p style="font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 14px;">
-        מחברים פעם אחת עם טוקן אישי של GitHub (החשבון שכבר מארח את האפליקציה), והאפליקציה שומרת אוטומטית
-        עותק פרטי (Gist) של המפתח, המנויים והמועדפים בכל שינוי — ומושכת אותו אוטומטית בכל מכשיר שמחברים אליו.
+        נכנסים עם כתובת המייל שלכם — בלי סיסמה, בלי קוד לזכור. בכל מכשיר, מזינים את אותו מייל ולוחצים
+        על הקישור שיישלח אליכם, וההגדרות שלכם (מפתח, מנויים, מועדפים) יופיעו אוטומטית.
       </p>
-      <p id="githubStatusText" class="api-status missing">לא מחובר</p>
-      <div class="row">
-        <input type="text" id="githubTokenInput" placeholder="הדביקו כאן טוקן אישי (עם הרשאת gist בלבד)">
-        <button class="btn btn-primary" id="githubConnectBtn" style="flex:0 0 auto;">חיבור</button>
+      <p id="syncStatusText" class="api-status missing">לא מחובר</p>
+
+      <div id="syncLoginRow">
+        <div class="row">
+          <input type="text" id="syncEmailInput" placeholder="כתובת המייל שלכם" style="direction:ltr;text-align:left;">
+          <button class="btn btn-primary" id="syncLoginBtn" style="flex:0 0 auto;">שליחת קישור כניסה</button>
+        </div>
       </div>
-      <div class="error-text" id="githubError" style="display:none;"></div>
-      <p class="api-hint">
-        יוצרים טוקן ב-<a href="https://github.com/settings/tokens/new?scopes=gist&description=mah-yesh-litzfot" target="_blank">הגדרות הטוקנים ב-GitHub</a> —
-        חשוב לסמן <b>רק</b> את ההרשאה <code>gist</code>, לא הרשאות נוספות. הטוקן נשמר בדפדפן שלכם ומשמש רק לשמירה/קריאה של הגיבוי.
-      </p>
-      <button class="btn btn-ghost" id="githubDisconnectBtn" style="display:none;margin-top:10px;">ניתוק</button>
+      <div class="error-text" id="syncError" style="display:none;"></div>
+
+      <button class="btn btn-ghost" id="syncLogoutBtn" style="display:none;margin-top:10px;">התנתקות</button>
     </div>
   </section>
 
   <section>
+
     <div class="section-head">
       <h2>גיבוי ידני</h2>
       <span class="hint">לגיבוי חד-פעמי בקובץ</span>
@@ -385,7 +386,12 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL = 'https://btbqngxgxsvbcocxxdhk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0YnFuZ3hneHN2YmNvY3h4ZGhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzAwOTUsImV4cCI6MjEwNTY0NjA5NX0.Lf2BYf77Xtkp6zWyuDx8TF9BM9ceEIAG6IFVw3Viso8';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const IMG_BASE = 'https://image.tmdb.org/t/p/';
 let apiKey = localStorage.getItem('tmdb_api_key') || '';
 let allProviders = [];
@@ -425,7 +431,7 @@ el('saveKeyInlineBtn').addEventListener('click', async () => {
   localStorage.setItem('tmdb_api_key', apiKey);
   el('apiKeyInlineInput').value = '';
   renderApiStatus();
-  scheduleGithubSync();
+  scheduleSync();
   loadProviders().then(runQuery);
 });
 
@@ -525,7 +531,7 @@ function makeChip(p){
     else selectedProviders.add(p.provider_id);
     localStorage.setItem('my_providers', JSON.stringify([...selectedProviders]));
     chip.classList.toggle('active');
-    scheduleGithubSync();
+    scheduleSync();
     runQuery();
   });
   return chip;
@@ -785,7 +791,7 @@ function renderILProviders(){
       localStorage.setItem('my_il_providers', JSON.stringify([...selectedIL]));
       renderILProviders();
       updateILNote();
-      scheduleGithubSync();
+      scheduleSync();
     });
     grid.appendChild(chip);
   });
@@ -819,7 +825,7 @@ function toggleFavorite(item){
     favorites.push(item);
   }
   localStorage.setItem('my_favorites', JSON.stringify(favorites));
-  scheduleGithubSync();
+  scheduleSync();
   return !exists;
 }
 
@@ -938,15 +944,12 @@ el('importFile').addEventListener('change', (e) => {
   reader.readAsText(file);
 });
 
-// GitHub Gist auto-sync
-const GIST_FILENAME = 'mah-yesh-litzfot-backup.json';
-let githubToken = localStorage.getItem('github_token') || '';
-let githubGistId = localStorage.getItem('github_gist_id') || '';
-let githubSyncTimer = null;
+// cloud sync via Supabase — sign in with email (magic link), settings sync to a per-user DB row
+let syncUser = null; // set once a session exists
+let syncTimer = null;
 
 function currentBackupObject(){
   return {
-    exportedAt: new Date().toISOString(),
     tmdb_api_key: localStorage.getItem('tmdb_api_key') || '',
     my_providers: JSON.parse(localStorage.getItem('my_providers') || '[]'),
     my_il_providers: JSON.parse(localStorage.getItem('my_il_providers') || '[]'),
@@ -955,121 +958,99 @@ function currentBackupObject(){
 }
 
 function applyBackupObject(data){
+  if(!data) return;
   if(data.tmdb_api_key) localStorage.setItem('tmdb_api_key', data.tmdb_api_key);
   if(data.my_providers) localStorage.setItem('my_providers', JSON.stringify(data.my_providers));
   if(data.my_il_providers) localStorage.setItem('my_il_providers', JSON.stringify(data.my_il_providers));
   if(data.my_favorites) localStorage.setItem('my_favorites', JSON.stringify(data.my_favorites));
 }
 
-function renderGithubStatus(){
-  const status = el('githubStatusText');
-  const disconnectBtn = el('githubDisconnectBtn');
-  if(githubToken && githubGistId){
-    status.textContent = 'מחובר — מסתנכרן אוטומטית';
-    status.classList.remove('missing');
-    disconnectBtn.style.display = 'inline-block';
-    el('githubTokenInput').style.display = 'none';
-    el('githubConnectBtn').style.display = 'none';
-  } else {
-    status.textContent = 'לא מחובר';
-    status.classList.add('missing');
-    disconnectBtn.style.display = 'none';
-    el('githubTokenInput').style.display = '';
-    el('githubConnectBtn').style.display = '';
-  }
+function renderSyncStatus(){
+  const status = el('syncStatusText');
+  const connected = !!syncUser;
+  status.textContent = connected ? `מחובר בתור ${syncUser.email} — מסתנכרן אוטומטית` : 'לא מחובר';
+  status.classList.toggle('missing', !connected);
+  el('syncLoginRow').style.display = connected ? 'none' : 'block';
+  el('syncLogoutBtn').style.display = connected ? 'inline-block' : 'none';
 }
 
-function showGithubError(msg){
-  el('githubError').style.display = 'block';
-  el('githubError').textContent = msg;
-}
-function hideGithubError(){ el('githubError').style.display = 'none'; }
+function showSyncError(msg){ el('syncError').style.display = 'block'; el('syncError').textContent = msg; }
+function hideSyncError(){ el('syncError').style.display = 'none'; }
 
-async function githubApi(path, options={}){
-  const r = await fetch(`https://api.github.com${path}`, {
-    ...options,
-    headers: {
-      'Authorization': `token ${githubToken}`,
-      'Accept': 'application/vnd.github+json',
-      ...(options.headers || {}),
-    },
-  });
-  if(!r.ok) throw new Error(`github_error_${r.status}`);
-  return r.json();
-}
-
-async function findExistingGist(){
-  const gists = await githubApi('/gists?per_page=100');
-  const match = gists.find(g => g.files && g.files[GIST_FILENAME]);
-  return match ? match.id : null;
-}
-
-el('githubConnectBtn').addEventListener('click', async () => {
-  const token = el('githubTokenInput').value.trim();
-  if(!token){ showGithubError('צריך להדביק טוקן כדי להתחבר.'); return; }
-  hideGithubError();
-  el('githubConnectBtn').textContent = 'מתחבר…';
-  githubToken = token;
+el('syncLoginBtn').addEventListener('click', async () => {
+  const email = el('syncEmailInput').value.trim();
+  if(!email || !email.includes('@')){ showSyncError('הזינו כתובת מייל תקינה.'); return; }
+  hideSyncError();
+  el('syncLoginBtn').textContent = 'שולח…';
   try{
-    let existingId = await findExistingGist();
-    if(existingId){
-      // Found a backup from another device — pull it and use it as the source of truth.
-      const gist = await githubApi(`/gists/${existingId}`);
-      const remoteData = JSON.parse(gist.files[GIST_FILENAME].content);
-      applyBackupObject(remoteData);
-      githubGistId = existingId;
-    } else {
-      // First time connecting — create a new gist from what's on this device now.
-      const created = await githubApi('/gists', {
-        method: 'POST',
-        body: JSON.stringify({
-          description: 'מה יש לצפות - גיבוי הגדרות (נוצר אוטומטית, לא לערוך ידנית)',
-          public: false,
-          files: { [GIST_FILENAME]: { content: JSON.stringify(currentBackupObject(), null, 2) } },
-        }),
-      });
-      githubGistId = created.id;
-    }
-    localStorage.setItem('github_token', githubToken);
-    localStorage.setItem('github_gist_id', githubGistId);
-    renderGithubStatus();
-    location.reload();
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: location.href.split('#')[0].split('?')[0] },
+    });
+    if(error) throw error;
+    showSyncError('נשלח קישור למייל — פתחו אותו כדי להתחבר (בדקו גם ספאם).');
+    el('syncError').style.color = 'var(--teal)';
   }catch(e){
-    githubToken = '';
-    showGithubError('החיבור נכשל. ודאו שהטוקן תקין ושסימנתם עבורו את הרשאת gist.');
-    el('githubConnectBtn').textContent = 'חיבור';
+    showSyncError('שליחת הקישור נכשלה. נסו שוב בעוד רגע.');
+    el('syncError').style.color = '';
   }
+  el('syncLoginBtn').textContent = 'שליחת קישור כניסה';
 });
 
-el('githubDisconnectBtn').addEventListener('click', () => {
-  if(!confirm('לנתק את הסנכרון האוטומטי? הגיבוי עצמו יישאר ב-GitHub, רק החיבור מהמכשיר הזה יוסר.')) return;
-  githubToken = '';
-  githubGistId = '';
-  localStorage.removeItem('github_token');
-  localStorage.removeItem('github_gist_id');
-  renderGithubStatus();
+el('syncLogoutBtn').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  syncUser = null;
+  renderSyncStatus();
 });
 
-function scheduleGithubSync(){
-  if(!githubToken || !githubGistId) return;
-  clearTimeout(githubSyncTimer);
-  githubSyncTimer = setTimeout(async () => {
+async function pullFromCloud(){
+  if(!syncUser) return;
+  try{
+    const { data, error } = await sb.from('app_backups').select('data').eq('user_id', syncUser.id).maybeSingle();
+    if(error) throw error;
+    if(data && data.data){
+      applyBackupObject(data.data);
+    } else {
+      // first time this account connects — seed the cloud with what's on this device
+      await sb.from('app_backups').upsert({ user_id: syncUser.id, data: currentBackupObject(), updated_at: new Date().toISOString() });
+    }
+  }catch(e){ /* silent — will retry via normal sync on next change */ }
+}
+
+function scheduleSync(){
+  if(!syncUser) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
     try{
-      await githubApi(`/gists/${githubGistId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          files: { [GIST_FILENAME]: { content: JSON.stringify(currentBackupObject(), null, 2) } },
-        }),
+      await sb.from('app_backups').upsert({
+        user_id: syncUser.id,
+        data: currentBackupObject(),
+        updated_at: new Date().toISOString(),
       });
     }catch(e){ /* silent — will retry on next change */ }
   }, 1500);
 }
 
+sb.auth.onAuthStateChange(async (event, session) => {
+  if(session?.user){
+    syncUser = session.user;
+    renderSyncStatus();
+    await pullFromCloud();
+    renderApiStatus();
+    renderILProviders();
+    updateILNote();
+    if(apiKey) loadProviders().then(runQuery);
+  } else {
+    syncUser = null;
+    renderSyncStatus();
+  }
+});
+
 function init(){
   renderILProviders();
   updateILNote();
   renderApiStatus();
-  renderGithubStatus();
+  renderSyncStatus();
   if(!apiKey){ return; }
   loadProviders().then(runQuery);
 }
