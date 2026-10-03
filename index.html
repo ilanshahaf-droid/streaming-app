@@ -73,7 +73,7 @@
   .chip:hover{color:var(--text);}
 
   /* search bar */
-  .searchbar{display:flex;gap:10px;}
+  .searchbar{display:flex;gap:10px;flex-wrap:wrap;}
   .searchbar input[type=text]{
     flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);
     padding:13px 16px;border-radius:12px;font-size:15px;font-family:inherit;
@@ -85,6 +85,11 @@
     font-family:inherit;cursor:pointer;transition:.15s;
   }
   .toggle-group button.active{background:var(--gold);color:#181305;font-weight:600;}
+  .genre-select{
+    margin-top:12px;width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);
+    padding:11px 14px;border-radius:12px;font-size:14px;font-family:inherit;cursor:pointer;
+  }
+  .genre-select:focus{outline:none;border-color:var(--gold-dim);}
 
   /* results */
   #results, #recResults, #favResults, #watchedResults{
@@ -202,6 +207,9 @@
 
   @media (max-width:480px){
     #results, #recResults, #favResults, #watchedResults{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
+    .searchbar input[type=text]{flex:1 1 100%;}
+    .searchbar .toggle-group{flex:1 1 100%;}
+    .searchbar .toggle-group button{flex:1;}
   }
 </style>
 </head>
@@ -318,6 +326,9 @@
         <button data-type="tv">סדרות</button>
       </div>
     </div>
+    <select id="genreSelect" class="genre-select">
+      <option value="">כל הז'אנרים</option>
+    </select>
     <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13.5px;color:var(--muted);cursor:pointer;">
       <input type="checkbox" id="searchShowAll" style="accent-color:var(--gold);width:16px;height:16px;">
       הצג גם תכנים שלא זמינים כרגע באף מנוי (למשל כדי לסמן "ראיתי")
@@ -478,6 +489,7 @@ el('saveKeyInlineBtn').addEventListener('click', async () => {
   renderApiStatus();
   scheduleSync();
   loadProviders().then(runQuery);
+  loadGenres();
 });
 
 // Streaming Availability API (movieofthenight) — closes the Disney+/Israel gap
@@ -603,6 +615,36 @@ async function fetchJSON(path, params={}){
   return r.json();
 }
 
+let movieGenreMap = new Map(); // name -> id
+let tvGenreMap = new Map();    // name -> id
+
+async function loadGenres(){
+  try{
+    const [movieG, tvG] = await Promise.all([
+      fetchJSON('/genre/movie/list', {language:'he-IL'}),
+      fetchJSON('/genre/tv/list', {language:'he-IL'}),
+    ]);
+    movieGenreMap = new Map(movieG.genres.map(g => [g.name, g.id]));
+    tvGenreMap = new Map(tvG.genres.map(g => [g.name, g.id]));
+
+    const allNames = [...new Set([...movieGenreMap.keys(), ...tvGenreMap.keys()])].sort((a,b) => a.localeCompare(b, 'he'));
+    const select = el('genreSelect');
+    const current = select.value;
+    select.innerHTML = '<option value="">כל הז\'אנרים</option>' +
+      allNames.map(name => `<option value="${name}">${name}</option>`).join('');
+    select.value = current;
+  }catch(e){ /* genre filter just won't be available */ }
+}
+
+function matchesSelectedGenre(mediaType, genreIds){
+  const genreName = el('genreSelect').value;
+  if(!genreName) return true;
+  const map = mediaType === 'movie' ? movieGenreMap : tvGenreMap;
+  const genreId = map.get(genreName);
+  if(genreId === undefined) return true; // genre doesn't apply to this media type — don't exclude
+  return (genreIds || []).includes(genreId);
+}
+
 async function loadProviders(){
   el('providerHint').textContent = 'טוען שירותים זמינים בישראל…';
   try{
@@ -716,6 +758,7 @@ el('searchInput').addEventListener('input', () => {
   searchTimer = setTimeout(runQuery, 450);
 });
 el('searchShowAll').addEventListener('change', runQuery);
+el('genreSelect').addEventListener('change', runQuery);
 
 function setResultsState(html){ el('results').innerHTML = html; }
 
@@ -852,12 +895,18 @@ async function browseByProviders(){
   const providerStr = [...selectedProviders].join('|');
   const types = currentType === 'all' ? ['movie','tv'] : [currentType];
   let all = [];
+  const genreName = el('genreSelect').value;
   if(providerStr){
     for(const type of types){
-      const data = await fetchJSON(`/discover/${type}`, {
+      const genreMap = type === 'movie' ? movieGenreMap : tvGenreMap;
+      const genreId = genreName ? genreMap.get(genreName) : undefined;
+      if(genreName && genreId === undefined) continue; // this genre doesn't exist for this media type
+      const params = {
         watch_region:'IL', with_watch_providers: providerStr, watch_monetization_types:'flatrate',
         sort_by:'popularity.desc', language:'he-IL', 'vote_count.gte': 20
-      });
+      };
+      if(genreId !== undefined) params.with_genres = genreId;
+      const data = await fetchJSON(`/discover/${type}`, params);
       data.results.forEach(r => all.push(normalize(r, type)));
     }
   }
@@ -903,7 +952,8 @@ async function searchByText(query){
 
   const candidates = [...allResults, ...personCredits]
     .filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && (r.poster_path))
-    .filter(r => currentType === 'all' || r.media_type === currentType);
+    .filter(r => currentType === 'all' || r.media_type === currentType)
+    .filter(r => matchesSelectedGenre(r.media_type, r.genre_ids));
 
   // de-dupe (a title can theoretically repeat across pages if TMDB's ranking shifts)
   const seen = new Set();
@@ -954,6 +1004,7 @@ function normalize(r, type){
     rating: r.vote_average,
     popularity: r.popularity || 0,
     flatrate: r.flatrate || null,
+    genre_ids: r.genre_ids || (r.genres ? r.genres.map(g => g.id) : []),
   };
 }
 
@@ -1381,7 +1432,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     renderStreamApiStatus();
     renderILProviders();
     updateILNote();
-    if(apiKey) loadProviders().then(runQuery); else runQuery();
+    if(apiKey){ loadProviders().then(runQuery); loadGenres(); } else runQuery();
     if(el('tabFavorites').style.display !== 'none') renderMyListsTab();
   } else {
     syncUser = null;
@@ -1397,6 +1448,7 @@ function init(){
   renderSyncStatus();
   if(!apiKey){ return; }
   loadProviders().then(runQuery);
+  loadGenres();
 }
 
 init();
