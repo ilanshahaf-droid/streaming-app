@@ -311,7 +311,7 @@
       <h2>חיפוש תוכן</h2>
     </div>
     <div class="searchbar">
-      <input type="text" id="searchInput" placeholder="חפשו סרט או סדרה…">
+      <input type="text" id="searchInput" placeholder="חפשו סרט, סדרה, שחקן או במאי…">
       <div class="toggle-group" id="typeToggle">
         <button data-type="all" class="active">הכל</button>
         <button data-type="movie">סרטים</button>
@@ -873,6 +873,18 @@ async function browseByProviders(){
   return all.slice(0, 24);
 }
 
+async function searchPersonCredits(query){
+  try{
+    const data = await fetchJSON('/search/person', {query, language:'he-IL'});
+    const person = (data.results || [])[0];
+    if(!person) return [];
+    const credits = await fetchJSON(`/person/${person.id}/combined_credits`, {language:'he-IL'});
+    const asCast = credits.cast || [];
+    const asDirector = (credits.crew || []).filter(c => c.job === 'Director');
+    return [...asCast, ...asDirector];
+  }catch(e){ return []; }
+}
+
 async function searchByText(query){
   // Fetch several pages of results — a generic word like "אהבה" can match
   // hundreds of titles, and the ones actually available on the person's
@@ -885,7 +897,11 @@ async function searchByText(query){
   );
   const allResults = pages.flatMap(p => p.results || []);
 
-  const candidates = allResults
+  // Also check if the query matches a person (actor/director) — if so, pull
+  // their filmography in as candidates too, so searching a name works.
+  const personCredits = await searchPersonCredits(query);
+
+  const candidates = [...allResults, ...personCredits]
     .filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && (r.poster_path))
     .filter(r => currentType === 'all' || r.media_type === currentType);
 
