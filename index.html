@@ -87,7 +87,7 @@
   .toggle-group button.active{background:var(--gold);color:#181305;font-weight:600;}
 
   /* results */
-  #results, #recResults, #favResults{
+  #results, #recResults, #favResults, #watchedResults{
     display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;
   }
   .card{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border);transition:.15s;cursor:pointer;}
@@ -201,7 +201,7 @@
   .detail-loading{padding:60px 0;text-align:center;color:var(--muted);}
 
   @media (max-width:480px){
-    #results, #recResults, #favResults{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
+    #results, #recResults, #favResults, #watchedResults{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
   }
 </style>
 </head>
@@ -369,10 +369,15 @@
 
   <section>
     <div class="section-head">
-      <h2>המועדפים שלי</h2>
+      <h2 id="myListsTitle">המועדפים שלי</h2>
       <span class="hint">נשמר בדפדפן שלכם</span>
     </div>
+    <div class="toggle-group" id="myListsToggle" style="margin-bottom:18px;">
+      <button data-list="favorites" class="active">מועדפים</button>
+      <button data-list="watched">מה שראיתי</button>
+    </div>
     <div id="favResults"></div>
+    <div id="watchedResults" style="display:none;"></div>
   </section>
 
   </div><!-- /tabFavorites -->
@@ -578,7 +583,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     el('tabRecommend').style.display = btn.dataset.tab === 'recommend' ? 'block' : 'none';
     el('tabFavorites').style.display = btn.dataset.tab === 'favorites' ? 'block' : 'none';
     if(btn.dataset.tab === 'recommend') runRecommend();
-    if(btn.dataset.tab === 'favorites') renderFavoritesTab();
+    if(btn.dataset.tab === 'favorites') renderMyListsTab();
   });
 });
 
@@ -1053,7 +1058,7 @@ document.addEventListener('click', (e) => {
     const nowActive = toggleFavorite(item);
     favBtn.classList.toggle('active', nowActive);
     favBtn.textContent = nowActive ? '♥' : '♡';
-    if(el('tabFavorites').style.display !== 'none') renderFavoritesTab();
+    if(el('tabFavorites').style.display !== 'none') renderMyListsTab();
     return;
   }
 });
@@ -1062,6 +1067,27 @@ function renderFavoritesTab(){
   const emptyHtml = '<div class="empty">עדיין לא סימנתם מועדפים.<br>לחצו על ה-♡ על כרטיס של סרט או סדרה בחיפוש או בהמלצות כדי להוסיף אותו לכאן.</div>';
   renderResults('favResults', favorites, emptyHtml);
 }
+
+function renderWatchedTab(){
+  const emptyHtml = '<div class="empty">עדיין לא סימנתם מה ראיתם.<br>לחצו על ה-👁 על כרטיס של סרט או סדרה כדי להוסיף אותו לכאן.</div>';
+  renderResults('watchedResults', watched, emptyHtml);
+}
+
+let myListsView = 'favorites';
+function renderMyListsTab(){
+  if(myListsView === 'favorites') renderFavoritesTab(); else renderWatchedTab();
+}
+el('myListsToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  [...el('myListsToggle').children].forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  myListsView = btn.dataset.list;
+  el('favResults').style.display = myListsView === 'favorites' ? 'grid' : 'none';
+  el('watchedResults').style.display = myListsView === 'watched' ? 'grid' : 'none';
+  el('myListsTitle').textContent = myListsView === 'favorites' ? 'המועדפים שלי' : 'מה שראיתי';
+  if(myListsView === 'favorites') renderFavoritesTab(); else renderWatchedTab();
+});
 
 // watched list — used to power "based on what I've watched" recommendations
 let watched = JSON.parse(localStorage.getItem('my_watched') || '[]');
@@ -1340,7 +1366,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     renderILProviders();
     updateILNote();
     if(apiKey) loadProviders().then(runQuery); else runQuery();
-    if(el('tabFavorites').style.display !== 'none') renderFavoritesTab();
+    if(el('tabFavorites').style.display !== 'none') renderMyListsTab();
   } else {
     syncUser = null;
     renderSyncStatus();
