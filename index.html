@@ -104,6 +104,13 @@
   }
   .fav-btn.active{color:var(--danger);}
   .fav-btn:hover{color:var(--danger);}
+  .watched-btn{
+    position:absolute;top:6px;right:40px;background:rgba(15,17,21,.75);border:none;
+    width:28px;height:28px;border-radius:50%;font-size:13px;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;
+  }
+  .watched-btn.active{color:var(--teal);}
+  .watched-btn:hover{color:var(--teal);}
   .card-body{padding:10px 12px 12px;}
   .card-title{font-size:13.5px;font-weight:600;line-height:1.3;margin:0 0 3px;}
   .card-year{font-size:12px;color:var(--muted);margin:0 0 8px;}
@@ -203,6 +210,7 @@
 <div class="wrap">
   <header>
     <div class="brand"><span class="dot"></span>מה יש לצפות?</div>
+    <button class="icon-btn" id="openSettingsBtn" title="הגדרות">⚙</button>
   </header>
 
   <div class="tabs" id="tabsBar">
@@ -213,22 +221,6 @@
   </div>
 
   <div id="tabServices" class="tab-panel">
-
-  <section>
-    <div class="section-head">
-      <h2>מפתח API</h2>
-      <span class="hint">נשמר בדפדפן שלכם</span>
-    </div>
-    <div class="api-card">
-      <p id="apiStatusText" class="api-status"></p>
-      <div class="row">
-        <input type="text" id="apiKeyInlineInput" placeholder="הדביקו כאן את מפתח ה-API">
-        <button class="btn btn-primary" id="saveKeyInlineBtn" style="flex:0 0 auto;">שמירה</button>
-      </div>
-      <div class="error-text" id="apiKeyInlineError" style="display:none;"></div>
-      <p class="api-hint">אין מפתח? הכינו אחד חינם ב-<a href="https://www.themoviedb.org/settings/api" target="_blank">הגדרות החשבון ב-TMDB</a>.</p>
-    </div>
-  </section>
 
   <section>
     <div class="section-head">
@@ -326,6 +318,10 @@
         <button data-type="tv">סדרות</button>
       </div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13.5px;color:var(--muted);cursor:pointer;">
+      <input type="checkbox" id="searchShowAll" style="accent-color:var(--gold);width:16px;height:16px;">
+      הצג גם תכנים שלא זמינים כרגע באף מנוי (למשל כדי לסמן "ראיתי")
+    </label>
   </section>
 
   <section>
@@ -349,6 +345,7 @@
         <button data-cat="trending" class="active">חם השבוע</button>
         <button data-cat="top_rated">הכי מדורגים</button>
         <button data-cat="popular">הכי פופולריים</button>
+        <button data-cat="based_on_watched">בהתאם למה שראיתי</button>
       </div>
       <div class="toggle-group" id="recTypeToggle">
         <button data-type="all" class="active">הכל</button>
@@ -381,6 +378,45 @@
   </div><!-- /tabFavorites -->
 
   <footer>נתוני תוכן וזמינות מסופקים על ידי TMDB · לא נתמך רשמית על ידי TMDB</footer>
+</div>
+
+<div class="modal-bg" id="settingsModalBg" style="display:none;">
+  <div class="modal" style="max-width:480px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;">הגדרות</h3>
+      <button class="icon-btn" id="closeSettingsBtn">✕</button>
+    </div>
+
+    <div class="section-head">
+      <h2 style="font-size:15px;">מפתח API</h2>
+      <span class="hint">נשמר בדפדפן שלכם</span>
+    </div>
+    <div class="api-card" style="margin-bottom:20px;">
+      <p id="apiStatusText" class="api-status"></p>
+      <div class="row">
+        <input type="text" id="apiKeyInlineInput" placeholder="הדביקו כאן את מפתח ה-API">
+        <button class="btn btn-primary" id="saveKeyInlineBtn" style="flex:0 0 auto;">שמירה</button>
+      </div>
+      <div class="error-text" id="apiKeyInlineError" style="display:none;"></div>
+      <p class="api-hint">אין מפתח? הכינו אחד חינם ב-<a href="https://www.themoviedb.org/settings/api" target="_blank">הגדרות החשבון ב-TMDB</a>.</p>
+    </div>
+
+    <div class="section-head">
+      <h2 style="font-size:15px;">מפתח Streaming Availability</h2>
+      <span class="hint">אופציונלי — דיסני+</span>
+    </div>
+    <div class="api-card">
+      <p style="font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 14px;">
+        TMDB לא עוקב אחרי זמינות דיסני+ בישראל בכלל. מפתח נוסף וחינמי מ-movieofthenight סוגר את הפער הספציפי הזה.
+      </p>
+      <p id="streamApiStatusText" class="api-status"></p>
+      <div class="row">
+        <input type="text" id="streamApiKeyInput" placeholder="הדביקו כאן את המפתח (אופציונלי)">
+        <button class="btn btn-primary" id="saveStreamKeyBtn" style="flex:0 0 auto;">שמירה</button>
+      </div>
+      <p class="api-hint">מפתח חינמי ב-<a href="https://developers.movieofthenight.com/" target="_blank">developers.movieofthenight.com</a>. בלי מפתח — הכל ימשיך לעבוד כרגיל, פשוט בלי כיסוי לדיסני+.</p>
+    </div>
+  </div>
 </div>
 
 <div class="modal-bg" id="detailModalBg" style="display:none;">
@@ -438,6 +474,99 @@ el('saveKeyInlineBtn').addEventListener('click', async () => {
   scheduleSync();
   loadProviders().then(runQuery);
 });
+
+// Streaming Availability API (movieofthenight) — closes the Disney+/Israel gap
+// that TMDB/JustWatch simply doesn't track. Optional: the rest of the app
+// works fully without this key.
+const STREAM_API_BASE = 'https://api.movieofthenight.com/v4';
+let streamApiKey = localStorage.getItem('stream_api_key') || '';
+
+function renderStreamApiStatus(){
+  const status = el('streamApiStatusText');
+  if(streamApiKey){
+    status.textContent = `מפתח פעיל (${streamApiKey.slice(0,4)}…${streamApiKey.slice(-4)})`;
+    status.classList.remove('missing');
+  } else {
+    status.textContent = 'לא הוגדר — דיסני+ לא ייכלל בחיפוש האוטומטי';
+    status.classList.add('missing');
+  }
+}
+
+el('saveStreamKeyBtn').addEventListener('click', () => {
+  const val = el('streamApiKeyInput').value.trim();
+  streamApiKey = val;
+  if(val) localStorage.setItem('stream_api_key', val); else localStorage.removeItem('stream_api_key');
+  el('streamApiKeyInput').value = '';
+  renderStreamApiStatus();
+});
+
+async function fetchStreamJSON(path, params = {}){
+  const url = new URL(`${STREAM_API_BASE}${path}`);
+  Object.entries(params).forEach(([k, v]) => { if(v !== undefined && v !== null && v !== '') url.searchParams.set(k, v); });
+  const r = await fetch(url, { headers: { 'X-API-Key': streamApiKey } });
+  if(!r.ok) throw new Error('stream_api_error');
+  return r.json();
+}
+
+function isDisneySelected(){
+  return selectedIL.has('disney');
+}
+
+function isDisneyAvailable(show){
+  const opts = (show.streamingOptions && show.streamingOptions.il) || [];
+  return opts.some(o => o.service && o.service.id === 'disney' && o.type === 'subscription');
+}
+
+function parseStreamShow(show){
+  if(!show.tmdbId) return null;
+  const [type, idStr] = show.tmdbId.split('/');
+  if(type !== 'movie' && type !== 'tv') return null;
+  const year = show.releaseYear || show.firstAirYear || null;
+  const poster = show.imageSet && show.imageSet.verticalPoster
+    ? (show.imageSet.verticalPoster.w360 || show.imageSet.verticalPoster.w480 || show.imageSet.verticalPoster.w240)
+    : null;
+  return {
+    id: idStr,
+    type,
+    title: show.title,
+    date: year ? `${year}-01-01` : '',
+    poster: null,
+    posterUrl: poster,
+    rating: typeof show.rating === 'number' ? show.rating / 10 : null,
+    popularity: 0,
+    flatrate: [{
+      provider_id: 'disney-stream-api',
+      provider_name: 'Disney Plus',
+      logo_path: null,
+      logoUrl: 'https://media.movieofthenight.com/services/disney/logo-dark-theme.svg',
+    }],
+  };
+}
+
+async function searchDisneyIL(query){
+  try{
+    const data = await fetchStreamJSON('/shows/search/title', {
+      title: query, country: 'il', output_language: 'he', series_granularity: 'show',
+    });
+    const results = Array.isArray(data) ? data : [];
+    return results
+      .filter(isDisneyAvailable)
+      .filter(s => currentType === 'all' || (currentType === 'movie' ? s.showType === 'movie' : s.showType === 'series'))
+      .map(parseStreamShow)
+      .filter(Boolean);
+  }catch(e){ return []; }
+}
+
+async function browseDisneyIL(){
+  try{
+    const params = { country: 'il', catalogs: 'disney', series_granularity: 'show', output_language: 'he' };
+    if(currentType === 'movie') params.show_type = 'movie';
+    if(currentType === 'tv') params.show_type = 'series';
+    const data = await fetchStreamJSON('/shows/search/filters', params);
+    const results = data.shows || [];
+    return results.map(parseStreamShow).filter(Boolean).slice(0, 10);
+  }catch(e){ return []; }
+}
 
 // tabs
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -581,6 +710,7 @@ el('searchInput').addEventListener('input', () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runQuery, 450);
 });
+el('searchShowAll').addEventListener('change', runQuery);
 
 function setResultsState(html){ el('results').innerHTML = html; }
 
@@ -645,18 +775,49 @@ async function runRecommend(){
     el('recResults').innerHTML = '<div class="empty">עוד לא הוגדר מפתח API.<br><b>עברו ללשונית "שירותים וערוצים"</b> והדביקו שם את המפתח כדי להתחיל.</div>';
     return;
   }
+  if(recCategory === 'based_on_watched' && watched.length === 0){
+    el('recResults').innerHTML = '<div class="empty">עוד לא סימנתם מה ראיתם.<br>לחצו על ה-👁 על כרטיס של סרט או סדרה כדי שנוכל להציע לכם לפי זה.</div>';
+    return;
+  }
+
   el('recResults').innerHTML = '<div class="spinner"></div>';
   try{
     const types = recType === 'all' ? ['movie','tv'] : [recType];
     let all = [];
-    for(const type of types){
-      let path;
-      if(recCategory === 'trending') path = `/trending/${type}/week`;
-      else if(recCategory === 'top_rated') path = `/${type}/top_rated`;
-      else path = `/${type}/popular`;
-      const data = await fetchJSON(path, {language:'he-IL', region:'IL'});
-      data.results.filter(r => r.poster_path).forEach(r => all.push(normalize(r, type)));
+
+    if(recCategory === 'based_on_watched'){
+      // Use the most recently marked-watched titles as seeds for TMDB's
+      // per-title recommendations, then combine and dedupe.
+      const seeds = watched.filter(w => types.includes(w.type)).slice(0, 6);
+      const seedResults = await Promise.all(seeds.map(async s => {
+        try{
+          const data = await fetchJSON(`/${s.type}/${s.id}/recommendations`, {language:'he-IL'});
+          return data.results.filter(r => r.poster_path).map(r => normalize(r, s.type));
+        }catch(e){ return []; }
+      }));
+      all = seedResults.flat();
+      // never recommend something already marked as watched
+      all = all.filter(r => !watched.some(w => String(w.id) === String(r.id) && w.type === r.type));
+    } else {
+      for(const type of types){
+        let path;
+        if(recCategory === 'trending') path = `/trending/${type}/week`;
+        else if(recCategory === 'top_rated') path = `/${type}/top_rated`;
+        else path = `/${type}/popular`;
+        const data = await fetchJSON(path, {language:'he-IL', region:'IL'});
+        data.results.filter(r => r.poster_path).forEach(r => all.push(normalize(r, type)));
+      }
     }
+
+    // de-dupe
+    const seen = new Set();
+    all = all.filter(r => {
+      const key = r.type + r.id;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     all.sort((a,b) => b.popularity - a.popularity);
     let items = all.slice(0, 24);
 
@@ -686,13 +847,23 @@ async function browseByProviders(){
   const providerStr = [...selectedProviders].join('|');
   const types = currentType === 'all' ? ['movie','tv'] : [currentType];
   let all = [];
-  for(const type of types){
-    const data = await fetchJSON(`/discover/${type}`, {
-      watch_region:'IL', with_watch_providers: providerStr, watch_monetization_types:'flatrate',
-      sort_by:'popularity.desc', language:'he-IL', 'vote_count.gte': 20
-    });
-    data.results.forEach(r => all.push(normalize(r, type)));
+  if(providerStr){
+    for(const type of types){
+      const data = await fetchJSON(`/discover/${type}`, {
+        watch_region:'IL', with_watch_providers: providerStr, watch_monetization_types:'flatrate',
+        sort_by:'popularity.desc', language:'he-IL', 'vote_count.gte': 20
+      });
+      data.results.forEach(r => all.push(normalize(r, type)));
+    }
   }
+
+  if(isDisneySelected() && streamApiKey){
+    const disneyTop = await browseDisneyIL();
+    disneyTop.forEach(d => {
+      if(!all.some(a => a.type === d.type && String(a.id) === String(d.id))) all.push(d);
+    });
+  }
+
   all.sort((a,b) => b.popularity - a.popularity);
   return all.slice(0, 24);
 }
@@ -733,10 +904,24 @@ async function searchByText(query){
     }
   }));
 
-  if(selectedProviders.size === 0) return withProviders.map(w => ({...w.item, flatrate:w.flatrate})).slice(0, 24);
+  const showAll = el('searchShowAll').checked;
+  if(showAll || selectedProviders.size === 0){
+    return withProviders.map(w => ({...w.item, flatrate:w.flatrate})).slice(0, 40);
+  }
 
-  const matched = withProviders.filter(w => w.matchedIds.length > 0);
-  return matched.map(w => ({...w.item, flatrate:w.flatrate}));
+  let matched = withProviders.filter(w => w.matchedIds.length > 0).map(w => ({...w.item, flatrate:w.flatrate}));
+
+  // TMDB/JustWatch doesn't track Disney+ availability for Israel at all, so
+  // we check the streaming-availability API separately (one extra call,
+  // not per-candidate, to stay well within its free-tier quota).
+  if(isDisneySelected() && streamApiKey){
+    const disneyMatches = await searchDisneyIL(query);
+    disneyMatches.forEach(d => {
+      if(!matched.some(m => m.type === d.type && String(m.id) === String(d.id))) matched.push(d);
+    });
+  }
+
+  return matched;
 }
 
 function normalize(r, type){
@@ -773,14 +958,16 @@ async function renderResults(containerId, items, emptyHtml){
   container.innerHTML = items.map(i => {
     const flatrate = i.flatrate || providerMap[i.id + i.type] || [];
     const year = i.date ? new Date(i.date).getFullYear() : '';
-    const poster = i.poster ? `${IMG_BASE}w342${i.poster}` : '';
-    const badges = flatrate.slice(0,5).map(p => `<img src="${IMG_BASE}w45${p.logo_path}" title="${p.provider_name}">`).join('');
+    const poster = i.posterUrl || (i.poster ? `${IMG_BASE}w342${i.poster}` : '');
+    const badges = flatrate.slice(0,5).map(p => `<img src="${p.logoUrl || (IMG_BASE+'w45'+p.logo_path)}" title="${p.provider_name}">`).join('');
     const favActive = isFavorite(i.id, i.type) ? ' active' : '';
+    const watchedActive = isWatched(i.id, i.type) ? ' active' : '';
     return `
       <div class="card" data-id="${i.id}" data-type="${i.type}">
         <div class="poster" style="background-image:url('${poster}')">
           ${i.rating ? `<span class="rating">★ ${i.rating.toFixed(1)}</span>` : ''}
           <button class="fav-btn${favActive}" data-fav-id="${i.id}" data-fav-type="${i.type}" data-fav-title="${i.title.replace(/"/g,'&quot;')}" data-fav-poster="${i.poster || ''}" data-fav-date="${i.date || ''}" data-fav-rating="${i.rating || ''}">${favActive ? '♥' : '♡'}</button>
+          <button class="watched-btn${watchedActive}" title="${watchedActive ? 'ראיתי' : 'סמנו שראיתם'}" data-watched-id="${i.id}" data-watched-type="${i.type}" data-watched-title="${i.title.replace(/"/g,'&quot;')}" data-watched-poster="${i.poster || ''}" data-watched-date="${i.date || ''}" data-watched-rating="${i.rating || ''}">${watchedActive ? '✓' : '👁'}</button>
         </div>
         <div class="card-body">
           <p class="card-title">${i.title}</p>
@@ -876,12 +1063,57 @@ function renderFavoritesTab(){
   renderResults('favResults', favorites, emptyHtml);
 }
 
+// watched list — used to power "based on what I've watched" recommendations
+let watched = JSON.parse(localStorage.getItem('my_watched') || '[]');
+
+function isWatched(id, type){
+  return watched.some(w => String(w.id) === String(id) && w.type === type);
+}
+
+function toggleWatched(item){
+  const exists = isWatched(item.id, item.type);
+  if(exists){
+    watched = watched.filter(w => !(String(w.id) === String(item.id) && w.type === item.type));
+  } else {
+    watched.unshift(item); // most recently marked first
+  }
+  localStorage.setItem('my_watched', JSON.stringify(watched));
+  scheduleSync();
+  return !exists;
+}
+
+document.addEventListener('click', (e) => {
+  const watchedBtn = e.target.closest('.watched-btn');
+  if(watchedBtn){
+    e.stopImmediatePropagation();
+    const item = {
+      id: watchedBtn.dataset.watchedId,
+      type: watchedBtn.dataset.watchedType,
+      title: watchedBtn.dataset.watchedTitle,
+      poster: watchedBtn.dataset.watchedPoster || null,
+      date: watchedBtn.dataset.watchedDate || '',
+      rating: watchedBtn.dataset.watchedRating ? parseFloat(watchedBtn.dataset.watchedRating) : null,
+    };
+    const nowActive = toggleWatched(item);
+    watchedBtn.classList.toggle('active', nowActive);
+    watchedBtn.textContent = nowActive ? '✓' : '👁';
+    watchedBtn.title = nowActive ? 'ראיתי' : 'סמנו שראיתם';
+    return;
+  }
+});
+
 // content detail modal
 document.addEventListener('click', (e) => {
   const card = e.target.closest('.card');
   if(card && card.dataset.id) openDetail(card.dataset.id, card.dataset.type);
 });
 el('detailCloseBtn').addEventListener('click', closeDetail);
+
+el('openSettingsBtn').addEventListener('click', () => { el('settingsModalBg').style.display = 'flex'; });
+el('closeSettingsBtn').addEventListener('click', () => { el('settingsModalBg').style.display = 'none'; });
+el('settingsModalBg').addEventListener('click', (e) => {
+  if(e.target.id === 'settingsModalBg') el('settingsModalBg').style.display = 'none';
+});
 el('detailModalBg').addEventListener('click', (e) => {
   if(e.target.id === 'detailModalBg') closeDetail();
 });
@@ -932,9 +1164,11 @@ el('exportBtn').addEventListener('click', () => {
   const backup = {
     exportedAt: new Date().toISOString(),
     tmdb_api_key: localStorage.getItem('tmdb_api_key') || '',
+    stream_api_key: localStorage.getItem('stream_api_key') || '',
     my_providers: JSON.parse(localStorage.getItem('my_providers') || '[]'),
     my_il_providers: JSON.parse(localStorage.getItem('my_il_providers') || '[]'),
     my_favorites: JSON.parse(localStorage.getItem('my_favorites') || '[]'),
+    my_watched: JSON.parse(localStorage.getItem('my_watched') || '[]'),
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -955,9 +1189,11 @@ el('importFile').addEventListener('change', (e) => {
     try{
       const data = JSON.parse(reader.result);
       if(data.tmdb_api_key) localStorage.setItem('tmdb_api_key', data.tmdb_api_key);
+      if(data.stream_api_key) localStorage.setItem('stream_api_key', data.stream_api_key);
       if(data.my_providers) localStorage.setItem('my_providers', JSON.stringify(data.my_providers));
       if(data.my_il_providers) localStorage.setItem('my_il_providers', JSON.stringify(data.my_il_providers));
       if(data.my_favorites) localStorage.setItem('my_favorites', JSON.stringify(data.my_favorites));
+      if(data.my_watched) localStorage.setItem('my_watched', JSON.stringify(data.my_watched));
       location.reload();
     }catch(err){
       alert('קובץ הגיבוי לא תקין. ודאו שזה קובץ JSON שיוצא מהאפליקציה הזו.');
@@ -973,18 +1209,22 @@ let syncTimer = null;
 function currentBackupObject(){
   return {
     tmdb_api_key: localStorage.getItem('tmdb_api_key') || '',
+    stream_api_key: localStorage.getItem('stream_api_key') || '',
     my_providers: JSON.parse(localStorage.getItem('my_providers') || '[]'),
     my_il_providers: JSON.parse(localStorage.getItem('my_il_providers') || '[]'),
     my_favorites: JSON.parse(localStorage.getItem('my_favorites') || '[]'),
+    my_watched: JSON.parse(localStorage.getItem('my_watched') || '[]'),
   };
 }
 
 function applyBackupObject(data){
   if(!data) return;
   if(data.tmdb_api_key) localStorage.setItem('tmdb_api_key', data.tmdb_api_key);
+  if(data.stream_api_key) localStorage.setItem('stream_api_key', data.stream_api_key);
   if(data.my_providers) localStorage.setItem('my_providers', JSON.stringify(data.my_providers));
   if(data.my_il_providers) localStorage.setItem('my_il_providers', JSON.stringify(data.my_il_providers));
   if(data.my_favorites) localStorage.setItem('my_favorites', JSON.stringify(data.my_favorites));
+  if(data.my_watched) localStorage.setItem('my_watched', JSON.stringify(data.my_watched));
 }
 
 function renderSyncStatus(){
@@ -1033,9 +1273,9 @@ el('syncLogoutBtn').addEventListener('click', async () => {
   renderSyncStatus();
 });
 
-function mergeFavorites(localFavs, cloudFavs){
-  const merged = [...localFavs];
-  cloudFavs.forEach(cf => {
+function mergeItemLists(localList, cloudList){
+  const merged = [...localList];
+  cloudList.forEach(cf => {
     if(!merged.some(lf => String(lf.id) === String(cf.id) && lf.type === cf.type)) merged.push(cf);
   });
   return merged;
@@ -1053,9 +1293,11 @@ async function pullFromCloud(){
     // device that hasn't synced yet) never wipes out real local data.
     const merged = {
       tmdb_api_key: cloud.tmdb_api_key || local.tmdb_api_key,
+      stream_api_key: cloud.stream_api_key || local.stream_api_key,
       my_providers: (cloud.my_providers && cloud.my_providers.length) ? cloud.my_providers : local.my_providers,
       my_il_providers: (cloud.my_il_providers && cloud.my_il_providers.length) ? cloud.my_il_providers : local.my_il_providers,
-      my_favorites: mergeFavorites(local.my_favorites, cloud.my_favorites || []),
+      my_favorites: mergeItemLists(local.my_favorites, cloud.my_favorites || []),
+      my_watched: mergeItemLists(local.my_watched, cloud.my_watched || []),
     };
     applyBackupObject(merged);
 
@@ -1080,9 +1322,11 @@ function scheduleSync(){
 
 function reloadLocalState(){
   apiKey = localStorage.getItem('tmdb_api_key') || '';
+  streamApiKey = localStorage.getItem('stream_api_key') || '';
   selectedProviders = new Set(JSON.parse(localStorage.getItem('my_providers') || '[]'));
   selectedIL = new Set(JSON.parse(localStorage.getItem('my_il_providers') || '[]'));
   favorites = JSON.parse(localStorage.getItem('my_favorites') || '[]');
+  watched = JSON.parse(localStorage.getItem('my_watched') || '[]');
 }
 
 sb.auth.onAuthStateChange(async (event, session) => {
@@ -1092,6 +1336,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     await pullFromCloud();
     reloadLocalState();
     renderApiStatus();
+    renderStreamApiStatus();
     renderILProviders();
     updateILNote();
     if(apiKey) loadProviders().then(runQuery); else runQuery();
@@ -1106,6 +1351,7 @@ function init(){
   renderILProviders();
   updateILNote();
   renderApiStatus();
+  renderStreamApiStatus();
   renderSyncStatus();
   if(!apiKey){ return; }
   loadProviders().then(runQuery);
