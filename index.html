@@ -92,7 +92,7 @@
   .genre-select:focus{outline:none;border-color:var(--gold-dim);}
 
   /* results */
-  #results, #recResults, #favResults, #watchedResults{
+  #results, #recResults, #favResults, #watchedResults, #watchlistResults{
     display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;
   }
   .card{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border);transition:.15s;cursor:pointer;}
@@ -116,6 +116,13 @@
   }
   .watched-btn.active{color:var(--teal);}
   .watched-btn:hover{color:var(--teal);}
+  .watchlist-btn{
+    position:absolute;top:6px;right:74px;background:rgba(15,17,21,.75);border:none;
+    width:28px;height:28px;border-radius:50%;font-size:13px;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;
+  }
+  .watchlist-btn.active{color:var(--gold);}
+  .watchlist-btn:hover{color:var(--gold);}
   .card-body{padding:10px 12px 12px;}
   .card-title{font-size:13.5px;font-weight:600;line-height:1.3;margin:0 0 3px;}
   .card-year{font-size:12px;color:var(--muted);margin:0 0 8px;}
@@ -206,7 +213,7 @@
   .detail-loading{padding:60px 0;text-align:center;color:var(--muted);}
 
   @media (max-width:480px){
-    #results, #recResults, #favResults, #watchedResults{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
+    #results, #recResults, #favResults, #watchedResults, #watchlistResults{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
     .searchbar input[type=text]{flex:1 1 100%;}
     .searchbar .toggle-group{flex:1 1 100%;}
     .searchbar .toggle-group button{flex:1;}
@@ -356,7 +363,7 @@
         <button data-cat="trending" class="active">חם השבוע</button>
         <button data-cat="top_rated">הכי מדורגים</button>
         <button data-cat="popular">הכי פופולריים</button>
-        <button data-cat="based_on_watched">בהתאם למה שראיתי</button>
+        <button data-cat="based_on_watched">לפי הטעם שלי</button>
       </div>
       <div class="toggle-group" id="recTypeToggle">
         <button data-type="all" class="active">הכל</button>
@@ -386,9 +393,11 @@
     <div class="toggle-group" id="myListsToggle" style="margin-bottom:18px;">
       <button data-list="favorites" class="active">מועדפים</button>
       <button data-list="watched">מה שראיתי</button>
+      <button data-list="watchlist">לצפייה בהמשך</button>
     </div>
     <div id="favResults"></div>
     <div id="watchedResults" style="display:none;"></div>
+    <div id="watchlistResults" style="display:none;"></div>
   </section>
 
   </div><!-- /tabFavorites -->
@@ -818,13 +827,60 @@ el('recTypeToggle').addEventListener('click', (e) => {
 });
 el('recOnlyMine').addEventListener('change', runRecommend);
 
+// Builds recommendations from favorites + watched as "taste seeds".
+// Favorites count double (they're a stronger taste signal than just having
+// watched something). A candidate's score is how many distinct seeds point
+// to it — agreement across several liked/seen titles beats one-off
+// popularity. Anything already favorited, watched, or on the watchlist is
+// excluded, since recommending something already on the plan isn't useful.
+async function buildTasteBasedRecommendations(types){
+  const favSeeds = favorites.filter(f => types.includes(f.type)).slice(0, 5)
+    .map(s => ({ id: s.id, type: s.type, weight: 2 }));
+  const watchedSeeds = watched.filter(w => types.includes(w.type))
+    .filter(w => !favSeeds.some(f => String(f.id) === String(w.id) && f.type === w.type))
+    .slice(0, 5).map(s => ({ id: s.id, type: s.type, weight: 1 }));
+  const seeds = [...favSeeds, ...watchedSeeds];
+
+  const scoreMap = new Map(); // key "type+id" -> { item, score }
+
+  await Promise.all(seeds.map(async seed => {
+    try{
+      const [recData, simData] = await Promise.all([
+        fetchJSON(`/${seed.type}/${seed.id}/recommendations`, {language:'he-IL'}).catch(() => ({results: []})),
+        fetchJSON(`/${seed.type}/${seed.id}/similar`, {language:'he-IL'}).catch(() => ({results: []})),
+      ]);
+      const seedCandidates = [...(recData.results || []), ...(simData.results || [])].filter(r => r.poster_path);
+      const seenForThisSeed = new Set();
+      seedCandidates.forEach(r => {
+        const key = seed.type + r.id;
+        if(seenForThisSeed.has(key)) return; // one vote per seed, even if both endpoints surfaced it
+        seenForThisSeed.add(key);
+        const existing = scoreMap.get(key);
+        if(existing) existing.score += seed.weight;
+        else scoreMap.set(key, { item: normalize(r, seed.type), score: seed.weight });
+      });
+    }catch(e){ /* skip this seed, keep the rest */ }
+  }));
+
+  const excludeKeys = new Set([
+    ...favorites.map(f => f.type + f.id),
+    ...watched.map(w => w.type + w.id),
+    ...watchlist.map(w => w.type + w.id),
+  ]);
+
+  return [...scoreMap.values()]
+    .filter(({item}) => !excludeKeys.has(item.type + item.id))
+    // encode score as the dominant sort key; real popularity only breaks ties
+    .map(({item, score}) => ({...item, popularity: score * 1000 + item.popularity}));
+}
+
 async function runRecommend(){
   if(!apiKey){
     el('recResults').innerHTML = '<div class="empty">עוד לא הוגדר מפתח API.<br><b>עברו ללשונית "שירותים וערוצים"</b> והדביקו שם את המפתח כדי להתחיל.</div>';
     return;
   }
-  if(recCategory === 'based_on_watched' && watched.length === 0){
-    el('recResults').innerHTML = '<div class="empty">עוד לא סימנתם מה ראיתם.<br>לחצו על ה-👁 על כרטיס של סרט או סדרה כדי שנוכל להציע לכם לפי זה.</div>';
+  if(recCategory === 'based_on_watched' && watched.length === 0 && favorites.length === 0){
+    el('recResults').innerHTML = '<div class="empty">עוד לא סימנתם מועדפים או נצפים.<br>לחצו על ה-♥ או ה-👁 על כרטיס כדי שנוכל להציע לכם לפי הטעם שלכם.</div>';
     return;
   }
 
@@ -834,18 +890,7 @@ async function runRecommend(){
     let all = [];
 
     if(recCategory === 'based_on_watched'){
-      // Use the most recently marked-watched titles as seeds for TMDB's
-      // per-title recommendations, then combine and dedupe.
-      const seeds = watched.filter(w => types.includes(w.type)).slice(0, 6);
-      const seedResults = await Promise.all(seeds.map(async s => {
-        try{
-          const data = await fetchJSON(`/${s.type}/${s.id}/recommendations`, {language:'he-IL'});
-          return data.results.filter(r => r.poster_path).map(r => normalize(r, s.type));
-        }catch(e){ return []; }
-      }));
-      all = seedResults.flat();
-      // never recommend something already marked as watched
-      all = all.filter(r => !watched.some(w => String(w.id) === String(r.id) && w.type === r.type));
+      all = await buildTasteBasedRecommendations(types);
     } else {
       for(const type of types){
         let path;
@@ -1034,12 +1079,14 @@ async function renderResults(containerId, items, emptyHtml){
     const badges = flatrate.slice(0,5).map(p => `<img src="${p.logoUrl || (IMG_BASE+'w45'+p.logo_path)}" title="${p.provider_name}">`).join('');
     const favActive = isFavorite(i.id, i.type) ? ' active' : '';
     const watchedActive = isWatched(i.id, i.type) ? ' active' : '';
+    const watchlistActive = isInWatchlist(i.id, i.type) ? ' active' : '';
     return `
       <div class="card" data-id="${i.id}" data-type="${i.type}">
         <div class="poster" style="background-image:url('${poster}')">
           ${i.rating ? `<span class="rating">★ ${i.rating.toFixed(1)}</span>` : ''}
           <button class="fav-btn${favActive}" data-fav-id="${i.id}" data-fav-type="${i.type}" data-fav-title="${i.title.replace(/"/g,'&quot;')}" data-fav-poster="${i.poster || ''}" data-fav-date="${i.date || ''}" data-fav-rating="${i.rating || ''}">${favActive ? '♥' : '♡'}</button>
           <button class="watched-btn${watchedActive}" title="${watchedActive ? 'ראיתי' : 'סמנו שראיתם'}" data-watched-id="${i.id}" data-watched-type="${i.type}" data-watched-title="${i.title.replace(/"/g,'&quot;')}" data-watched-poster="${i.poster || ''}" data-watched-date="${i.date || ''}" data-watched-rating="${i.rating || ''}">${watchedActive ? '✓' : '👁'}</button>
+          <button class="watchlist-btn${watchlistActive}" title="${watchlistActive ? 'ברשימת הצפייה' : 'הוסיפו לרשימת הצפייה'}" data-watchlist-id="${i.id}" data-watchlist-type="${i.type}" data-watchlist-title="${i.title.replace(/"/g,'&quot;')}" data-watchlist-poster="${i.poster || ''}" data-watchlist-date="${i.date || ''}" data-watchlist-rating="${i.rating || ''}">${watchlistActive ? '📌' : '➕'}</button>
         </div>
         <div class="card-body">
           <p class="card-title">${i.title}</p>
@@ -1140,9 +1187,19 @@ function renderWatchedTab(){
   renderResults('watchedResults', watched, emptyHtml);
 }
 
+function renderWatchlistTab(){
+  const emptyHtml = '<div class="empty">עדיין לא הוספתם כלום לרשימת הצפייה.<br>לחצו על ה-➕ על כרטיס של סרט או סדרה כדי לשמור אותו לצפייה בהמשך.</div>';
+  renderResults('watchlistResults', watchlist, emptyHtml);
+}
+
+const MY_LISTS = {
+  favorites: { container: 'favResults', title: 'המועדפים שלי', render: () => renderFavoritesTab() },
+  watched: { container: 'watchedResults', title: 'מה שראיתי', render: () => renderWatchedTab() },
+  watchlist: { container: 'watchlistResults', title: 'לצפייה בהמשך', render: () => renderWatchlistTab() },
+};
 let myListsView = 'favorites';
 function renderMyListsTab(){
-  if(myListsView === 'favorites') renderFavoritesTab(); else renderWatchedTab();
+  MY_LISTS[myListsView].render();
 }
 el('myListsToggle').addEventListener('click', (e) => {
   const btn = e.target.closest('button');
@@ -1150,10 +1207,10 @@ el('myListsToggle').addEventListener('click', (e) => {
   [...el('myListsToggle').children].forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   myListsView = btn.dataset.list;
-  el('favResults').style.display = myListsView === 'favorites' ? 'grid' : 'none';
-  el('watchedResults').style.display = myListsView === 'watched' ? 'grid' : 'none';
-  el('myListsTitle').textContent = myListsView === 'favorites' ? 'המועדפים שלי' : 'מה שראיתי';
-  if(myListsView === 'favorites') renderFavoritesTab(); else renderWatchedTab();
+  Object.values(MY_LISTS).forEach(l => { el(l.container).style.display = 'none'; });
+  el(MY_LISTS[myListsView].container).style.display = 'grid';
+  el('myListsTitle').textContent = MY_LISTS[myListsView].title;
+  renderMyListsTab();
 });
 
 // watched list — used to power "based on what I've watched" recommendations
@@ -1191,6 +1248,47 @@ document.addEventListener('click', (e) => {
     watchedBtn.classList.toggle('active', nowActive);
     watchedBtn.textContent = nowActive ? '✓' : '👁';
     watchedBtn.title = nowActive ? 'ראיתי' : 'סמנו שראיתם';
+    return;
+  }
+});
+
+// watchlist — "want to watch later". Separate from favorites/watched on
+// purpose: it's a plan, not a taste signal, so it's never used to seed
+// recommendations, and anything on it is excluded from suggestions.
+let watchlist = JSON.parse(localStorage.getItem('my_watchlist') || '[]');
+
+function isInWatchlist(id, type){
+  return watchlist.some(w => String(w.id) === String(id) && w.type === type);
+}
+
+function toggleWatchlist(item){
+  const exists = isInWatchlist(item.id, item.type);
+  if(exists){
+    watchlist = watchlist.filter(w => !(String(w.id) === String(item.id) && w.type === item.type));
+  } else {
+    watchlist.unshift(item);
+  }
+  localStorage.setItem('my_watchlist', JSON.stringify(watchlist));
+  scheduleSync();
+  return !exists;
+}
+
+document.addEventListener('click', (e) => {
+  const watchlistBtn = e.target.closest('.watchlist-btn');
+  if(watchlistBtn){
+    e.stopImmediatePropagation();
+    const item = {
+      id: watchlistBtn.dataset.watchlistId,
+      type: watchlistBtn.dataset.watchlistType,
+      title: watchlistBtn.dataset.watchlistTitle,
+      poster: watchlistBtn.dataset.watchlistPoster || null,
+      date: watchlistBtn.dataset.watchlistDate || '',
+      rating: watchlistBtn.dataset.watchlistRating ? parseFloat(watchlistBtn.dataset.watchlistRating) : null,
+    };
+    const nowActive = toggleWatchlist(item);
+    watchlistBtn.classList.toggle('active', nowActive);
+    watchlistBtn.textContent = nowActive ? '📌' : '➕';
+    watchlistBtn.title = nowActive ? 'ברשימת הצפייה' : 'הוסיפו לרשימת הצפייה';
     return;
   }
 });
@@ -1262,6 +1360,7 @@ el('exportBtn').addEventListener('click', () => {
     my_il_providers: JSON.parse(localStorage.getItem('my_il_providers') || '[]'),
     my_favorites: JSON.parse(localStorage.getItem('my_favorites') || '[]'),
     my_watched: JSON.parse(localStorage.getItem('my_watched') || '[]'),
+    my_watchlist: JSON.parse(localStorage.getItem('my_watchlist') || '[]'),
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1287,6 +1386,7 @@ el('importFile').addEventListener('change', (e) => {
       if(data.my_il_providers) localStorage.setItem('my_il_providers', JSON.stringify(data.my_il_providers));
       if(data.my_favorites) localStorage.setItem('my_favorites', JSON.stringify(data.my_favorites));
       if(data.my_watched) localStorage.setItem('my_watched', JSON.stringify(data.my_watched));
+      if(data.my_watchlist) localStorage.setItem('my_watchlist', JSON.stringify(data.my_watchlist));
       location.reload();
     }catch(err){
       alert('קובץ הגיבוי לא תקין. ודאו שזה קובץ JSON שיוצא מהאפליקציה הזו.');
@@ -1307,6 +1407,7 @@ function currentBackupObject(){
     my_il_providers: JSON.parse(localStorage.getItem('my_il_providers') || '[]'),
     my_favorites: JSON.parse(localStorage.getItem('my_favorites') || '[]'),
     my_watched: JSON.parse(localStorage.getItem('my_watched') || '[]'),
+    my_watchlist: JSON.parse(localStorage.getItem('my_watchlist') || '[]'),
   };
 }
 
@@ -1318,6 +1419,7 @@ function applyBackupObject(data){
   if(data.my_il_providers) localStorage.setItem('my_il_providers', JSON.stringify(data.my_il_providers));
   if(data.my_favorites) localStorage.setItem('my_favorites', JSON.stringify(data.my_favorites));
   if(data.my_watched) localStorage.setItem('my_watched', JSON.stringify(data.my_watched));
+  if(data.my_watchlist) localStorage.setItem('my_watchlist', JSON.stringify(data.my_watchlist));
 }
 
 function renderSyncStatus(){
@@ -1391,6 +1493,7 @@ async function pullFromCloud(){
       my_il_providers: (cloud.my_il_providers && cloud.my_il_providers.length) ? cloud.my_il_providers : local.my_il_providers,
       my_favorites: mergeItemLists(local.my_favorites, cloud.my_favorites || []),
       my_watched: mergeItemLists(local.my_watched, cloud.my_watched || []),
+      my_watchlist: mergeItemLists(local.my_watchlist, cloud.my_watchlist || []),
     };
     applyBackupObject(merged);
 
@@ -1420,6 +1523,7 @@ function reloadLocalState(){
   selectedIL = new Set(JSON.parse(localStorage.getItem('my_il_providers') || '[]'));
   favorites = JSON.parse(localStorage.getItem('my_favorites') || '[]');
   watched = JSON.parse(localStorage.getItem('my_watched') || '[]');
+  watchlist = JSON.parse(localStorage.getItem('my_watchlist') || '[]');
 }
 
 sb.auth.onAuthStateChange(async (event, session) => {
