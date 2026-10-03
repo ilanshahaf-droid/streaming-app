@@ -146,7 +146,7 @@
   }
   .modal{
     background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;
-    max-width:420px;width:100%;
+    max-width:420px;width:100%;max-height:85vh;overflow-y:auto;
   }
   .modal h3{margin:0 0 10px;font-size:17px;}
   .modal p{color:var(--muted);font-size:13.5px;line-height:1.7;margin:0 0 16px;}
@@ -267,53 +267,6 @@
       למרות שהשירותים האלה קיימים בישראל בפועל, המאגר שהחיפוש מבוסס עליו (JustWatch) עדיין לא עוקב אחרי הזמינות שלהם כאן —
       אז אי אפשר לבדוק אוטומטית מה זמין בהם. אפשר לבדוק זמינות ישירות:
       <span id="ilLinks"></span>
-    </div>
-  </section>
-
-  <section>
-    <div class="section-head">
-      <h2>סנכרון בענן</h2>
-      <span class="hint">כניסה עם מייל</span>
-    </div>
-    <div class="api-card">
-      <p style="font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 14px;">
-        נכנסים עם מייל וסיסמה — בלי קישורים, בלי קודים במייל. בפעם הראשונה זו הרשמה,
-        ומאותו רגע זו כניסה רגילה בכל מכשיר. ההגדרות שלכם מסתנכרנות אוטומטית.
-      </p>
-      <p id="syncStatusText" class="api-status missing">לא מחובר</p>
-
-      <div id="syncLoginRow">
-        <div class="row" style="margin-bottom:10px;">
-          <input type="text" id="syncEmailInput" placeholder="כתובת מייל" style="direction:ltr;text-align:left;">
-        </div>
-        <div class="row">
-          <input type="password" id="syncPasswordInput" placeholder="סיסמה (לפחות 6 תווים)" style="direction:ltr;text-align:left;">
-          <button class="btn btn-primary" id="syncLoginBtn" style="flex:0 0 auto;">כניסה / הרשמה</button>
-        </div>
-      </div>
-      <div class="error-text" id="syncError" style="display:none;"></div>
-
-      <button class="btn btn-ghost" id="syncLogoutBtn" style="display:none;margin-top:10px;">התנתקות</button>
-    </div>
-  </section>
-
-  <section>
-
-    <div class="section-head">
-      <h2>גיבוי ידני</h2>
-      <span class="hint">לגיבוי חד-פעמי בקובץ</span>
-    </div>
-    <div class="api-card">
-      <p style="font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 14px;">
-        המפתח, המנויים והמועדפים נשמרים רק בדפדפן הזה. אם תנקו נתוני גלישה, תעברו למכשיר אחר,
-        או תשתמשו בגלישה פרטית — המידע יימחק. ייצאו גיבוי מדי פעם כדי לא לאבד אותו.
-      </p>
-      <div class="row">
-        <button class="btn btn-primary" id="exportBtn" style="flex:1;">📤 ייצוא גיבוי</button>
-        <button class="btn btn-ghost" id="importBtn" style="flex:1;">📥 ייבוא גיבוי</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none;">
-      </div>
-      <p class="api-hint">קובץ הגיבוי כולל את מפתח ה-API שלכם בטקסט גלוי — שמרו אותו במקום פרטי ואל תעלו אותו לאתר ציבורי.</p>
     </div>
   </section>
 
@@ -445,6 +398,48 @@
         <button class="btn btn-primary" id="saveStreamKeyBtn" style="flex:0 0 auto;">שמירה</button>
       </div>
       <p class="api-hint">מפתח חינמי ב-<a href="https://developers.movieofthenight.com/" target="_blank">developers.movieofthenight.com</a>. בלי מפתח — הכל ימשיך לעבוד כרגיל, פשוט בלי כיסוי לדיסני+.</p>
+    </div>
+
+    <div class="section-head">
+      <h2 style="font-size:15px;">סנכרון בענן</h2>
+      <span class="hint">כניסה עם מייל</span>
+    </div>
+    <div class="api-card" style="margin-bottom:20px;">
+      <p style="font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 14px;">
+        נכנסים עם מייל וסיסמה — בלי קישורים, בלי קודים במייל. בפעם הראשונה זו הרשמה,
+        ומאותו רגע זו כניסה רגילה בכל מכשיר. ההגדרות שלכם מסתנכרנות אוטומטית.
+      </p>
+      <p id="syncStatusText" class="api-status missing">לא מחובר</p>
+
+      <div id="syncLoginRow">
+        <div class="row" style="margin-bottom:10px;">
+          <input type="text" id="syncEmailInput" placeholder="כתובת מייל" style="direction:ltr;text-align:left;">
+        </div>
+        <div class="row">
+          <input type="password" id="syncPasswordInput" placeholder="סיסמה (לפחות 6 תווים)" style="direction:ltr;text-align:left;">
+          <button class="btn btn-primary" id="syncLoginBtn" style="flex:0 0 auto;">כניסה / הרשמה</button>
+        </div>
+      </div>
+      <div class="error-text" id="syncError" style="display:none;"></div>
+
+      <button class="btn btn-ghost" id="syncLogoutBtn" style="display:none;margin-top:10px;">התנתקות</button>
+    </div>
+
+    <div class="section-head">
+      <h2 style="font-size:15px;">גיבוי ידני</h2>
+      <span class="hint">לגיבוי חד-פעמי בקובץ</span>
+    </div>
+    <div class="api-card">
+      <p style="font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 14px;">
+        המפתח, המנויים והמועדפים נשמרים רק בדפדפן הזה. אם תנקו נתוני גלישה, תעברו למכשיר אחר,
+        או תשתמשו בגלישה פרטית — המידע יימחק. ייצאו גיבוי מדי פעם כדי לא לאבד אותו.
+      </p>
+      <div class="row">
+        <button class="btn btn-primary" id="exportBtn" style="flex:1;">📤 ייצוא גיבוי</button>
+        <button class="btn btn-ghost" id="importBtn" style="flex:1;">📥 ייבוא גיבוי</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none;">
+      </div>
+      <p class="api-hint">קובץ הגיבוי כולל את מפתח ה-API שלכם בטקסט גלוי — שמרו אותו במקום פרטי ואל תעלו אותו לאתר ציבורי.</p>
     </div>
   </div>
 </div>
