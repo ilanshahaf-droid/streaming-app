@@ -390,10 +390,15 @@
       <h2 id="myListsTitle">המועדפים שלי</h2>
       <span class="hint">נשמר בדפדפן שלכם</span>
     </div>
-    <div class="toggle-group" id="myListsToggle" style="margin-bottom:18px;">
+    <div class="toggle-group" id="myListsToggle" style="margin-bottom:12px;">
       <button data-list="favorites" class="active">מועדפים</button>
       <button data-list="watched">מה שראיתי</button>
       <button data-list="watchlist">לצפייה בהמשך</button>
+    </div>
+    <div class="toggle-group" id="myListsTypeToggle" style="margin-bottom:18px;">
+      <button data-type="all" class="active">הכל</button>
+      <button data-type="movie">סרטים</button>
+      <button data-type="tv">סדרות</button>
     </div>
     <div id="favResults"></div>
     <div id="watchedResults" style="display:none;"></div>
@@ -1177,19 +1182,24 @@ document.addEventListener('click', (e) => {
   }
 });
 
+let myListsType = 'all';
+function filterByMyListsType(list){
+  return myListsType === 'all' ? list : list.filter(item => item.type === myListsType);
+}
+
 function renderFavoritesTab(){
   const emptyHtml = '<div class="empty">עדיין לא סימנתם מועדפים.<br>לחצו על ה-♡ על כרטיס של סרט או סדרה בחיפוש או בהמלצות כדי להוסיף אותו לכאן.</div>';
-  renderResults('favResults', favorites, emptyHtml);
+  renderResults('favResults', filterByMyListsType(favorites), emptyHtml);
 }
 
 function renderWatchedTab(){
   const emptyHtml = '<div class="empty">עדיין לא סימנתם מה ראיתם.<br>לחצו על ה-👁 על כרטיס של סרט או סדרה כדי להוסיף אותו לכאן.</div>';
-  renderResults('watchedResults', watched, emptyHtml);
+  renderResults('watchedResults', filterByMyListsType(watched), emptyHtml);
 }
 
 function renderWatchlistTab(){
   const emptyHtml = '<div class="empty">עדיין לא הוספתם כלום לרשימת הצפייה.<br>לחצו על ה-➕ על כרטיס של סרט או סדרה כדי לשמור אותו לצפייה בהמשך.</div>';
-  renderResults('watchlistResults', watchlist, emptyHtml);
+  renderResults('watchlistResults', filterByMyListsType(watchlist), emptyHtml);
 }
 
 const MY_LISTS = {
@@ -1210,6 +1220,15 @@ el('myListsToggle').addEventListener('click', (e) => {
   Object.values(MY_LISTS).forEach(l => { el(l.container).style.display = 'none'; });
   el(MY_LISTS[myListsView].container).style.display = 'grid';
   el('myListsTitle').textContent = MY_LISTS[myListsView].title;
+  renderMyListsTab();
+});
+
+el('myListsTypeToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  [...el('myListsTypeToggle').children].forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  myListsType = btn.dataset.type;
   renderMyListsTab();
 });
 
